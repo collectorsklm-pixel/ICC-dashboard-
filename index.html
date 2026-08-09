@@ -216,7 +216,28 @@
   .edit-log-row ul{ margin:0; padding-left:18px; color:var(--text-secondary); }
   .edit-download{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
 
+  /* manage work items (add / edit / delete) — top-of-page section */
+  .manage-section{ background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:18px 20px 20px; margin-bottom:28px; }
+  .manage-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .manage-tab{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-secondary); cursor:pointer;
+  }
+  .manage-tab:hover{ background:var(--surface-1); border-color:rgba(11,11,11,0.22); }
+  .manage-tab.active{ background:var(--series-1); border-color:var(--series-1); color:#fff; }
+  .manage-panel{ margin-bottom:4px; }
+  .add-form{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .add-form label{ display:block; font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; font-weight:600; }
+  .add-form select, .add-form input[type=text], .add-form textarea{
+    width:100%; font-family:inherit; font-size:12.5px; padding:7px 10px; border-radius:7px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-primary); resize:vertical;
+  }
+  .add-form .full{ grid-column:1 / -1; }
+  .delete-summary{ background:var(--critical-bg); border:1px solid rgba(208,59,59,0.3); border-radius:10px; padding:14px 16px; font-size:12.5px; margin-bottom:14px; }
+  .delete-summary .t{ font-weight:650; margin-bottom:6px; }
+
   @media (max-width: 980px){
+    .add-form{ grid-template-columns:1fr; }
     .kpi-row{ grid-template-columns:repeat(3,1fr); }
     .chart-row{ grid-template-columns:1fr; }
     .officer-grid{ grid-template-columns:repeat(2,1fr); }
@@ -235,6 +256,193 @@
       Generated <b id="genDate"></b> &middot; Latest field update captured in source: <b>05-Aug-2026</b>
     </div>
   </header>
+
+  <section class="manage-section" id="manageSection">
+    <h2 class="sectiontitle">🛠️ Manage work items</h2>
+    <p class="section-note">
+      Add a brand-new work item, edit an existing one, or remove one — pick a tab below. Every change is previewed before it applies,
+      and once confirmed it updates the charts, department cards and register live, and syncs centrally so every team member sees it
+      (see sync status at the bottom of this section). Use <b>Download updated dashboard</b> to save a new file with your edits baked in,
+      or <b>Copy edit log</b> to relay changes for a manual update of the source Google Sheet — this dashboard has no direct write access to Google Sheets.
+    </p>
+    <div class="manage-tabs">
+      <button type="button" class="manage-tab" data-manage="add">➕ Add new work</button>
+      <button type="button" class="manage-tab active" data-manage="edit">✏️ Edit work</button>
+      <button type="button" class="manage-tab" data-manage="delete">🗑️ Delete work</button>
+    </div>
+
+    <div class="manage-panel" id="panelAdd" style="display:none;">
+      <div class="add-form" id="addForm">
+        <div>
+          <label for="addSource">Source</label>
+          <select id="addSource"></select>
+        </div>
+        <div>
+          <label for="addItem">Item name *</label>
+          <input type="text" id="addItem" placeholder="Required">
+        </div>
+        <div>
+          <label for="addArea">Area / Section</label>
+          <input type="text" id="addArea">
+        </div>
+        <div>
+          <label for="addSub">Sub-area</label>
+          <input type="text" id="addSub">
+        </div>
+        <div>
+          <label for="addStatusCat">Status category</label>
+          <select id="addStatusCat"></select>
+        </div>
+        <div>
+          <label for="addPending">Pending with / officer</label>
+          <input type="text" id="addPending">
+        </div>
+        <div class="full">
+          <label for="addStatusRaw">Status remark</label>
+          <textarea id="addStatusRaw" rows="2"></textarea>
+        </div>
+        <div>
+          <label for="addDept">Executing department</label>
+          <select id="addDept"></select>
+        </div>
+        <div>
+          <label for="addEst">Est. completion</label>
+          <input type="text" id="addEst">
+        </div>
+        <div>
+          <label for="addContractor">Contractor</label>
+          <input type="text" id="addContractor">
+        </div>
+        <div>
+          <label for="addEstAmount">Estimated amount</label>
+          <input type="text" id="addEstAmount" placeholder="e.g. ₹12,50,000">
+        </div>
+        <div>
+          <label for="addSanctionedAmount">Sanctioned amount</label>
+          <input type="text" id="addSanctionedAmount" placeholder="e.g. ₹10,00,000">
+        </div>
+        <div class="full">
+          <label for="addSanctionSource">Source of sanctioned amount</label>
+          <input type="text" id="addSanctionSource" placeholder="e.g. SFC / RIDF / State Grant">
+        </div>
+        <div class="edit-actions full">
+          <button type="button" id="btnAddPreview">Preview new item</button>
+          <button type="button" id="btnAddReset">Clear form</button>
+        </div>
+      </div>
+      <div class="edit-preview" id="addPreview" style="display:none;">
+        <h3>Preview — confirm before adding</h3>
+        <table class="diff-table" id="addDiffTable"></table>
+        <div class="edit-actions">
+          <button type="button" id="btnAddConfirm">✔ Confirm &amp; add</button>
+          <button type="button" id="btnAddDiscard">✕ Discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="manage-panel" id="panelEdit">
+      <p class="section-note">Search for an item, change any field, and preview the change before applying — nothing is written until you confirm.</p>
+      <div class="edit-grid">
+        <div class="edit-picker">
+          <label for="editSearch">Search item</label>
+          <input type="text" id="editSearch" placeholder="Type item name, area…">
+          <label for="editSelect">Select item</label>
+          <select id="editSelect" size="10"></select>
+        </div>
+        <div class="edit-form" id="editForm" style="display:none;">
+          <div>
+            <label for="edStatusCat">Status category</label>
+            <select id="edStatusCat"></select>
+          </div>
+          <div>
+            <label for="edStatusRaw">Status remark</label>
+            <textarea id="edStatusRaw" rows="2"></textarea>
+          </div>
+          <div>
+            <label for="edPending">Pending with / officer</label>
+            <input type="text" id="edPending">
+          </div>
+          <div>
+            <label for="edDept">Executing department</label>
+            <select id="edDept"></select>
+          </div>
+          <div id="edEstWrap">
+            <label for="edEst">Est. completion (Area Tracker items only)</label>
+            <input type="text" id="edEst">
+          </div>
+          <div>
+            <label for="edContractor">Contractor</label>
+            <input type="text" id="edContractor">
+          </div>
+          <div>
+            <label for="edEstAmount">Estimated amount</label>
+            <input type="text" id="edEstAmount" placeholder="e.g. ₹12,50,000">
+          </div>
+          <div>
+            <label for="edSanctionedAmount">Sanctioned amount</label>
+            <input type="text" id="edSanctionedAmount" placeholder="e.g. ₹10,00,000">
+          </div>
+          <div>
+            <label for="edSanctionSource">Source of sanctioned amount</label>
+            <input type="text" id="edSanctionSource" placeholder="e.g. SFC / RIDF / State Grant">
+          </div>
+          <div class="edit-actions">
+            <button type="button" id="btnPreview">Preview changes</button>
+            <button type="button" id="btnCancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="edit-preview" id="editPreview" style="display:none;">
+        <h3>Preview — confirm before applying</h3>
+        <table class="diff-table" id="diffTable"></table>
+        <div class="edit-actions">
+          <button type="button" id="btnConfirm">✔ Confirm &amp; apply</button>
+          <button type="button" id="btnDiscard">✕ Discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="manage-panel" id="panelDelete" style="display:none;">
+      <p class="section-note">Search for an item and confirm to remove it. This also removes it for every team member once synced — there is no undo except re-adding it.</p>
+      <div class="edit-grid">
+        <div class="edit-picker">
+          <label for="delSearch">Search item</label>
+          <input type="text" id="delSearch" placeholder="Type item name, area…">
+          <label for="delSelect">Select item</label>
+          <select id="delSelect" size="10"></select>
+        </div>
+        <div class="edit-form" id="deletePreview" style="display:none;">
+          <div class="delete-summary" id="deleteSummary"></div>
+          <div class="edit-actions">
+            <button type="button" id="btnDeleteConfirm">🗑 Confirm &amp; delete</button>
+            <button type="button" id="btnDeleteCancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="edit-log-wrap">
+      <h3>Edit log <span class="count" id="editLogCount">(0)</span></h3>
+      <div id="editLog" class="edit-log"><div class="section-note">No edits yet this session.</div></div>
+      <p class="section-note" id="syncStatus" style="margin-top:8px;">Checking shared sync…</p>
+    </div>
+    <div class="edit-download">
+      <button type="button" id="btnRefreshSync">🔄 Refresh shared edits</button>
+      <button type="button" id="btnDownloadCsv">📊 Download formatted Excel (.xls)</button>
+      <button type="button" id="btnDownload">⬇ Download updated dashboard (.html)</button>
+      <button type="button" id="btnCopyLog">📋 Copy edit log</button>
+    </div>
+    <p class="section-note" style="margin-top:8px;">
+      <b>Easiest way to get your edits into the real Google Sheet:</b> click <b>Download formatted Excel</b> —
+      it saves the full work-item list (with any edits you've made) as a ready-formatted .xls file: bold header,
+      sized columns, and any row you've edited highlighted with the exact date &amp; time of the edit — no manual
+      reformatting needed when you open it. In Google Sheets you can also bring it in via
+      <b>File → Import → Upload</b>, choosing "Insert new sheet" or "Replace current sheet" for the relevant tab.
+      This needs no Google sign-in and nothing to deploy.
+      (Note: Excel may show a one-time "format and extension don't match" prompt when opening — this is expected
+      for this file type; click Yes/OK and it opens fully formatted.)
+    </p>
+  </section>
 
   <section class="reports-section" id="reportsSection">
     <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
@@ -326,82 +534,6 @@
     </div>
   </section>
 
-  <section class="detail-section" id="editSection">
-    <h2 class="sectiontitle">✏️ Edit a work item</h2>
-    <p class="section-note">
-      Search for an item, change any field, and preview the change before applying — nothing is written until you confirm.
-      Confirmed edits update the charts, department cards and register above live, but exist only in this browser tab: refreshing the page discards them.
-      Use <b>Download updated dashboard</b> to save a new file with your edits baked in, or <b>Copy edit log</b> to relay the changes for a manual update of the source Google Sheet — this dashboard has no direct write access to Google Sheets.
-    </p>
-    <div class="edit-grid">
-      <div class="edit-picker">
-        <label for="editSearch">Search item</label>
-        <input type="text" id="editSearch" placeholder="Type item name, area…">
-        <label for="editSelect">Select item</label>
-        <select id="editSelect" size="10"></select>
-      </div>
-      <div class="edit-form" id="editForm" style="display:none;">
-        <div>
-          <label for="edStatusCat">Status category</label>
-          <select id="edStatusCat"></select>
-        </div>
-        <div>
-          <label for="edStatusRaw">Status remark</label>
-          <textarea id="edStatusRaw" rows="2"></textarea>
-        </div>
-        <div>
-          <label for="edPending">Pending with / officer</label>
-          <input type="text" id="edPending">
-        </div>
-        <div>
-          <label for="edDept">Executing department</label>
-          <select id="edDept"></select>
-        </div>
-        <div id="edEstWrap">
-          <label for="edEst">Est. completion (Area Tracker items only)</label>
-          <input type="text" id="edEst">
-        </div>
-        <div>
-          <label for="edContractor">Contractor</label>
-          <input type="text" id="edContractor">
-        </div>
-        <div class="edit-actions">
-          <button type="button" id="btnPreview">Preview changes</button>
-          <button type="button" id="btnCancel">Cancel</button>
-        </div>
-      </div>
-    </div>
-    <div class="edit-preview" id="editPreview" style="display:none;">
-      <h3>Preview — confirm before applying</h3>
-      <table class="diff-table" id="diffTable"></table>
-      <div class="edit-actions">
-        <button type="button" id="btnConfirm">✔ Confirm &amp; apply</button>
-        <button type="button" id="btnDiscard">✕ Discard</button>
-      </div>
-    </div>
-    <div class="edit-log-wrap">
-      <h3>Edit log <span class="count" id="editLogCount">(0)</span></h3>
-      <div id="editLog" class="edit-log"><div class="section-note">No edits yet this session.</div></div>
-      <p class="section-note" id="syncStatus" style="margin-top:8px;">Checking shared sync…</p>
-    </div>
-    <div class="edit-download">
-      <button type="button" id="btnRefreshSync">🔄 Refresh shared edits</button>
-      <button type="button" id="btnDownloadCsv">📊 Download formatted Excel (.xls)</button>
-      <button type="button" id="btnDownload">⬇ Download updated dashboard (.html)</button>
-      <button type="button" id="btnCopyLog">📋 Copy edit log</button>
-    </div>
-    <p class="section-note" style="margin-top:8px;">
-      <b>Easiest way to get your edits into the real Google Sheet:</b> click <b>Download formatted Excel</b> —
-      it saves the full work-item list (with any edits you've made) as a ready-formatted .xls file: bold header,
-      sized columns, and any row you've edited highlighted with the exact date &amp; time of the edit — no manual
-      reformatting needed when you open it. In Google Sheets you can also bring it in via
-      <b>File → Import → Upload</b>, choosing "Insert new sheet" or "Replace current sheet" for the relevant tab.
-      This needs no Google sign-in and nothing to deploy.
-      (Note: Excel may show a one-time "format and extension don't match" prompt when opening — this is expected
-      for this file type; click Yes/OK and it opens fully formatted.)
-    </p>
-  </section>
-
   <section class="detail-section">
     <h2 class="sectiontitle">Financial mentions</h2>
     <p class="section-note">The source sheet does not maintain a structured cost/financial ledger — these are the only two cost figures found anywhere in the free-text remarks.</p>
@@ -452,8 +584,8 @@ document.getElementById('genDate2').textContent = "08-Aug-2026";
 
 // ---------- Unified item list (built early — every clickable tile filters this) ----------
 const allItems = [
-  ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, _ref: it})),
-  ...DATA.issue_items.map(it=>({source:'Issues List', area: it.section, sub: null, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: null, contractor: it.contractor, dept: it.dept||null, _ref: it})),
+  ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, _ref: it})),
+  ...DATA.issue_items.map(it=>({source:'Issues List', area: it.section, sub: null, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: null, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, _ref: it})),
 ];
 function itemKey(it){ return `${it.source}|||${it.area||''}|||${it.item}`; }
 
@@ -902,6 +1034,14 @@ function recomputeDerived(){
   renderProposalGrid();
   renderRegister();
   renderReports();
+  if (typeof renderEditPicker === 'function'){
+    const es = document.getElementById('editSearch');
+    renderEditPicker(es ? es.value : '');
+  }
+  if (typeof renderDeletePicker === 'function'){
+    const ds = document.getElementById('delSearch');
+    renderDeletePicker(ds ? ds.value : '');
+  }
 }
 
 // ---------- Shared live sync (Netlify Function + Blobs backend) ----------
@@ -914,23 +1054,82 @@ function recomputeDerived(){
 const SYNC_ENDPOINT = '/api/data';
 let syncAvailable = true;
 
+// Normalizes whatever the server returns into {edits, additions, deletions}. Handles the
+// OLD flat "{ [itemKey]: {fields} }" shape (what was stored before add/delete existed) by
+// treating it as pure edits, so older stored state keeps working with no migration step.
+function normalizeState(raw){
+  if (!raw || typeof raw !== 'object') return {edits:{}, additions:[], deletions:[]};
+  if (raw.edits || raw.additions || raw.deletions){
+    return {edits: raw.edits||{}, additions: raw.additions||[], deletions: raw.deletions||[]};
+  }
+  return {edits: raw, additions: [], deletions: []};
+}
+
+// Turns a plain "added item" object into a real allItems entry AND appends a matching
+// record into the underlying DATA.area_items / DATA.issue_items array (so _ref-based
+// features — in-place edits, Download updated dashboard — work on it exactly like a
+// baseline item).
+function materializeAddedItem(plain){
+  const ref = (plain.source === 'Area Tracker')
+    ? {area: plain.area||null, subarea: plain.sub||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, est_completion: plain.est||null, contractor: plain.contractor||null, dept: plain.dept||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null}
+    : {section: plain.area||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, contractor: plain.contractor||null, dept: plain.dept||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null};
+  if (plain.source === 'Area Tracker') DATA.area_items.push(ref); else DATA.issue_items.push(ref);
+  const newItem = {...plain, _ref: ref};
+  allItems.push(newItem);
+  return newItem;
+}
+function stripRef(it){ const c = {...it}; delete c._ref; return c; }
+
 async function pullSharedEdits(showBanner){
   try{
     const res = await fetch(SYNC_ENDPOINT, {cache:'no-store'});
-    if (!res.ok) { syncAvailable = false; return; }
-    const overlay = await res.json();
+    if (!res.ok) { syncAvailable = false; updateSyncStatus(false, 0); return; }
+    const state = normalizeState(await res.json());
     syncAvailable = true;
     let changed = false;
+
+    // 1) Deletions first — remove items whose key is on the shared deletion list.
+    if (state.deletions && state.deletions.length){
+      const delSet = new Set(state.deletions);
+      for (let i = allItems.length-1; i>=0; i--){
+        if (delSet.has(itemKey(allItems[i]))){
+          const it = allItems[i];
+          if (it._ref){
+            const arr = it.source==='Area Tracker' ? DATA.area_items : DATA.issue_items;
+            const refIdx = arr.indexOf(it._ref);
+            if (refIdx !== -1) arr.splice(refIdx, 1);
+          }
+          allItems.splice(i,1);
+          changed = true;
+        }
+      }
+    }
+
+    // 2) Additions — bring in any brand-new items this tab doesn't already have. This must
+    // happen BEFORE edits are applied below, so a later edit to a since-added item (made by
+    // someone else, after their addition already synced) actually lands on it here too —
+    // otherwise the freshly-materialized addition would keep its original, pre-edit values.
+    (state.additions||[]).forEach(add=>{
+      if (!allItems.some(it=>itemKey(it)===itemKey(add))){
+        materializeAddedItem(add);
+        changed = true;
+      }
+    });
+
+    // 3) Edits — overlay field changes onto matching items (existing baseline items and
+    // items just materialized from `additions` above).
     allItems.forEach(it=>{
-      const ov = overlay[itemKey(it)];
+      const ov = state.edits[itemKey(it)];
       if (ov){
         Object.assign(it, ov);
         if (it._ref) Object.assign(it._ref, ov);
         changed = true;
       }
     });
+
     if (changed) recomputeDerived();
-    updateSyncStatus(true, Object.keys(overlay).length);
+    const totalStored = Object.keys(state.edits).length + (state.additions||[]).length;
+    updateSyncStatus(true, totalStored);
     if (showBanner) renderEditLog();
   } catch(e){
     syncAvailable = false;
@@ -940,10 +1139,40 @@ async function pullSharedEdits(showBanner){
 
 async function pushSharedEdit(it){
   try{
-    const payload = { [itemKey(it)]: {
+    const payload = { edits: { [itemKey(it)]: {
       status_cat: it.status_cat, status_raw: it.status_raw, pending: it.pending,
-      dept: it.dept, est: it.est, contractor: it.contractor, editedAt: it.editedAt,
-    }};
+      dept: it.dept, est: it.est, contractor: it.contractor,
+      est_amount: it.est_amount, sanctioned_amount: it.sanctioned_amount, sanction_source: it.sanction_source,
+      editedAt: it.editedAt,
+    }}};
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){
+    syncAvailable = false;
+    updateSyncStatus(false, 0);
+  }
+}
+
+async function pushSharedAddition(item){
+  try{
+    const payload = { additions: [ item ] };
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){
+    syncAvailable = false;
+    updateSyncStatus(false, 0);
+  }
+}
+
+async function pushSharedDeletion(key){
+  try{
+    const payload = { deletions: [ key ] };
     const res = await fetch(SYNC_ENDPOINT, {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
@@ -959,7 +1188,7 @@ function updateSyncStatus(ok, count){
   const el = document.getElementById('syncStatus');
   if (!el) return;
   if (ok){
-    el.textContent = '🟢 Shared sync connected' + (count!==null && count!==undefined ? ` — ${count} edited item(s) stored centrally` : '');
+    el.textContent = '🟢 Shared sync connected' + (count!==null && count!==undefined ? ` — ${count} stored change(s) tracked centrally` : '');
     el.style.color = 'var(--good)';
   } else {
     el.textContent = '⚪ Shared sync unavailable — edits are only saved in this browser tab (this file may be opened locally rather than via its deployed Netlify link)';
@@ -1007,6 +1236,18 @@ function fillNativeSelect(id, values, placeholder){
 fillNativeSelect('edStatusCat', STATUS_CAT_OPTIONS);
 fillNativeSelect('edDept', EDIT_DEPT_OPTIONS, '— Not assigned —');
 
+// ---------- Manage tabs (Add / Edit / Delete) switching ----------
+document.querySelectorAll('.manage-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.manage-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.manage;
+    document.getElementById('panelAdd').style.display = tab==='add' ? '' : 'none';
+    document.getElementById('panelEdit').style.display = tab==='edit' ? '' : 'none';
+    document.getElementById('panelDelete').style.display = tab==='delete' ? '' : 'none';
+  });
+});
+
 function editItemLabel(it){
   return `[${it.source}] ${it.area? it.area+' — ':''}${it.item}`;
 }
@@ -1034,6 +1275,9 @@ document.getElementById('editSelect').addEventListener('change', e=>{
   document.getElementById('edDept').value = it.dept || '';
   document.getElementById('edEst').value = it.est || '';
   document.getElementById('edContractor').value = it.contractor || '';
+  document.getElementById('edEstAmount').value = it.est_amount || '';
+  document.getElementById('edSanctionedAmount').value = it.sanctioned_amount || '';
+  document.getElementById('edSanctionSource').value = it.sanction_source || '';
   document.getElementById('edEstWrap').style.display = (it.source==='Area Tracker') ? '' : 'none';
   document.getElementById('editForm').style.display = '';
   document.getElementById('editPreview').style.display = 'none';
@@ -1052,9 +1296,12 @@ const EDIT_FIELDS = [
   {key:'dept', label:'Executing department', inputId:'edDept'},
   {key:'est', label:'Est. completion', inputId:'edEst'},
   {key:'contractor', label:'Contractor', inputId:'edContractor'},
+  {key:'est_amount', label:'Estimated amount', inputId:'edEstAmount'},
+  {key:'sanctioned_amount', label:'Sanctioned amount', inputId:'edSanctionedAmount'},
+  {key:'sanction_source', label:'Source of sanctioned amount', inputId:'edSanctionSource'},
 ];
 // allItems field name -> underlying _ref (DATA.area_items / DATA.issue_items) field name — a couple differ
-const REF_FIELD_MAP = {status_cat:'status_cat', status_raw:'status_raw', pending:'pending_with', dept:'dept', est:'est_completion', contractor:'contractor'};
+const REF_FIELD_MAP = {status_cat:'status_cat', status_raw:'status_raw', pending:'pending_with', dept:'dept', est:'est_completion', contractor:'contractor', est_amount:'est_amount', sanctioned_amount:'sanctioned_amount', sanction_source:'sanction_source'};
 
 document.getElementById('btnPreview').addEventListener('click', ()=>{
   if (editSelIdx===null) return;
@@ -1107,18 +1354,164 @@ document.getElementById('btnConfirm').addEventListener('click', ()=>{
   pushSharedEdit(it); // save centrally so this shows up for everyone else too, not just this tab
 });
 
+// ---------- Add a new work item ----------
+fillNativeSelect('addSource', ['Area Tracker','Issues List']);
+fillNativeSelect('addStatusCat', STATUS_CAT_OPTIONS, '— Select —');
+fillNativeSelect('addDept', EDIT_DEPT_OPTIONS, '— Not assigned —');
+document.getElementById('addSource').value = 'Area Tracker';
+
+const ADD_FIELDS = [
+  {key:'item', label:'Item name', inputId:'addItem'},
+  {key:'area', label:'Area / Section', inputId:'addArea'},
+  {key:'sub', label:'Sub-area', inputId:'addSub'},
+  {key:'status_cat', label:'Status category', inputId:'addStatusCat'},
+  {key:'status_raw', label:'Status remark', inputId:'addStatusRaw'},
+  {key:'pending', label:'Pending with / officer', inputId:'addPending'},
+  {key:'dept', label:'Executing department', inputId:'addDept'},
+  {key:'est', label:'Est. completion', inputId:'addEst'},
+  {key:'contractor', label:'Contractor', inputId:'addContractor'},
+  {key:'est_amount', label:'Estimated amount', inputId:'addEstAmount'},
+  {key:'sanctioned_amount', label:'Sanctioned amount', inputId:'addSanctionedAmount'},
+  {key:'sanction_source', label:'Source of sanctioned amount', inputId:'addSanctionSource'},
+];
+let pendingAdd = null;
+
+function resetAddForm(){
+  ADD_FIELDS.forEach(f=>{ const el=document.getElementById(f.inputId); if (el) el.value=''; });
+  document.getElementById('addSource').value = 'Area Tracker';
+}
+
+document.getElementById('btnAddPreview').addEventListener('click', ()=>{
+  const itemName = document.getElementById('addItem').value.trim();
+  if (!itemName){ alert('Item name is required.'); return; }
+  const source = document.getElementById('addSource').value || 'Area Tracker';
+  const draft = { source };
+  ADD_FIELDS.forEach(f=>{
+    if (f.key==='item') return;
+    const v = document.getElementById(f.inputId).value.trim();
+    draft[f.key] = v || null;
+  });
+  draft.item = itemName;
+  const key = `${draft.source}|||${draft.area||''}|||${draft.item}`;
+  if (allItems.some(it=>itemKey(it)===key)){
+    alert('An item with this exact source + area + name already exists. Use the Edit tab instead, or change the area/name.');
+    return;
+  }
+  pendingAdd = draft;
+  document.getElementById('addDiffTable').innerHTML = `
+    <thead><tr><th>Field</th><th>Value</th></tr></thead>
+    <tbody>${ADD_FIELDS.map(f=>`<tr><td>${f.label}</td><td class="diff-new">${draft[f.key] || '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody>`;
+  document.getElementById('addPreview').style.display = '';
+  document.getElementById('addPreview').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+document.getElementById('btnAddReset').addEventListener('click', ()=>{
+  resetAddForm();
+  pendingAdd = null;
+  document.getElementById('addPreview').style.display = 'none';
+});
+
+document.getElementById('btnAddDiscard').addEventListener('click', ()=>{
+  pendingAdd = null;
+  document.getElementById('addPreview').style.display = 'none';
+});
+
+document.getElementById('btnAddConfirm').addEventListener('click', ()=>{
+  if (!pendingAdd) return;
+  const editedAtStr = new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  const draft = {...pendingAdd, editedAt: editedAtStr};
+  const newItem = materializeAddedItem(draft);
+  editLog.push({when: editLog.length+1, label: editItemLabel(newItem), when_at: editedAtStr, type:'add'});
+  renderEditLog();
+  resetAddForm();
+  document.getElementById('addPreview').style.display = 'none';
+  pendingAdd = null;
+  recomputeDerived();
+  pushSharedAddition(stripRef(newItem)); // save centrally so this shows up for everyone else too, not just this tab
+});
+
+// ---------- Delete a work item ----------
+let delSelIdx = null;
+
+function renderDeletePicker(filterText){
+  const q = (filterText||'').toLowerCase();
+  const sel = document.getElementById('delSelect');
+  if (!sel) return;
+  const matches = [];
+  allItems.forEach((it,i)=>{
+    const hay = `${it.source} ${it.area||''} ${it.item}`.toLowerCase();
+    if (!q || hay.includes(q)) matches.push(i);
+  });
+  sel.innerHTML = matches.slice(0,300).map(i=>`<option value="${i}">${editItemLabel(allItems[i]).replace(/</g,'&lt;')}</option>`).join('');
+  document.getElementById('deletePreview').style.display = 'none';
+  delSelIdx = null;
+}
+renderDeletePicker('');
+document.getElementById('delSearch').addEventListener('input', e=> renderDeletePicker(e.target.value));
+
+document.getElementById('delSelect').addEventListener('change', e=>{
+  const idx = +e.target.value;
+  if (Number.isNaN(idx)) { document.getElementById('deletePreview').style.display='none'; delSelIdx=null; return; }
+  delSelIdx = idx;
+  const it = allItems[idx];
+  const st = styleFor(it.status_cat);
+  document.getElementById('deleteSummary').innerHTML = `
+    <div class="t">${editItemLabel(it)}</div>
+    <div>Status: <span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span></div>
+    <div style="margin-top:6px;color:var(--text-secondary);">${(it.status_raw||'').toString().slice(0,200)}</div>
+  `;
+  document.getElementById('deletePreview').style.display = '';
+});
+
+document.getElementById('btnDeleteCancel').addEventListener('click', ()=>{
+  delSelIdx = null;
+  document.getElementById('deletePreview').style.display = 'none';
+  document.getElementById('delSelect').value = '';
+});
+
+document.getElementById('btnDeleteConfirm').addEventListener('click', ()=>{
+  if (delSelIdx===null) return;
+  const it = allItems[delSelIdx];
+  const key = itemKey(it);
+  const label = editItemLabel(it);
+  if (it._ref){
+    const arr = it.source==='Area Tracker' ? DATA.area_items : DATA.issue_items;
+    const refIdx = arr.indexOf(it._ref);
+    if (refIdx !== -1) arr.splice(refIdx, 1);
+  }
+  allItems.splice(delSelIdx, 1);
+  const editedAtStr = new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  editLog.push({when: editLog.length+1, label, when_at: editedAtStr, type:'delete'});
+  renderEditLog();
+  delSelIdx = null;
+  document.getElementById('deletePreview').style.display = 'none';
+  document.getElementById('delSelect').value = '';
+  recomputeDerived();
+  pushSharedDeletion(key); // save centrally so this shows up for everyone else too, not just this tab
+});
+
 function renderEditLog(){
   document.getElementById('editLogCount').textContent = `(${editLog.length})`;
   if (!editLog.length){
     document.getElementById('editLog').innerHTML = '<div class="section-note">No edits yet this session.</div>';
     return;
   }
-  document.getElementById('editLog').innerHTML = editLog.map(e=>`
-    <div class="edit-log-row">
+  document.getElementById('editLog').innerHTML = editLog.map(e=>{
+    if (e.type === 'add'){
+      return `<div class="edit-log-row">
+        <div class="t">#${e.when} — ➕ Added: ${e.label} <span class="muted" style="font-weight:400;">(${e.when_at||''})</span></div>
+      </div>`;
+    }
+    if (e.type === 'delete'){
+      return `<div class="edit-log-row">
+        <div class="t">#${e.when} — 🗑️ Deleted: ${e.label} <span class="muted" style="font-weight:400;">(${e.when_at||''})</span></div>
+      </div>`;
+    }
+    return `<div class="edit-log-row">
       <div class="t">#${e.when} — ${e.label} <span class="muted" style="font-weight:400;">(${e.when_at||''})</span></div>
       <ul>${Object.values(e.changes).map(c=>`<li>${c.label}: <span class="diff-old">${c.old||'—'}</span> → <span class="diff-new">${c.new||'—'}</span></li>`).join('')}</ul>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // Formatted Excel export of the full Work Item Register, reflecting any in-page edits.
@@ -1135,14 +1528,14 @@ function xlCell(val, styleId){
   return `<Cell${styleId?` ss:StyleID="${styleId}"`:''}><Data ss:Type="String">${xmlEscape(val)}</Data></Cell>`;
 }
 document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
-  const headers = ['Source','Area / Section','Sub-area','Item','Status','Status of Work (Remark)','Executing Department','Pending With','Est. Completion','Contractor','Edited In Dashboard (Date & Time)'];
-  const colWidths = [80,110,90,240,110,240,130,120,90,140,180];
+  const headers = ['Source','Area / Section','Sub-area','Item','Status','Status of Work (Remark)','Executing Department','Pending With','Est. Completion','Estimated Amount','Sanctioned Amount','Source of Sanctioned Amount','Contractor','Edited In Dashboard (Date & Time)'];
+  const colWidths = [80,110,90,240,110,240,130,120,90,120,120,160,140,180];
 
   let rowsXml = '<Row ss:AutoFitHeight="0" ss:Height="26">' + headers.map(h=>xlCell(h,'sHeader')).join('') + '</Row>';
   allItems.forEach(it=>{
     const editedAt = it.editedAt || '';
     const style = editedAt ? 'sBodyEdited' : 'sBody';
-    const vals = [it.source, it.area||'', it.sub||'', it.item, it.status_cat||'', it.status_raw||'', it.dept||'Not Assigned', it.pending||'', it.est||'', it.contractor||'', editedAt];
+    const vals = [it.source, it.area||'', it.sub||'', it.item, it.status_cat||'', it.status_raw||'', it.dept||'Not Assigned', it.pending||'', it.est||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'', it.contractor||'', editedAt];
     rowsXml += '<Row>' + vals.map(v=>xlCell(v, style)).join('') + '</Row>';
   });
 
@@ -1219,7 +1612,11 @@ document.getElementById('btnDownload').addEventListener('click', ()=>{
 
 document.getElementById('btnCopyLog').addEventListener('click', ()=>{
   if (!editLog.length){ alert('No edits to copy yet.'); return; }
-  const text = editLog.map(e=>`${e.label}\n` + Object.values(e.changes).map(c=>`  - ${c.label}: "${c.old}" -> "${c.new}"`).join('\n')).join('\n\n');
+  const text = editLog.map(e=>{
+    if (e.type === 'add') return `${e.label}\n  - Added new work item`;
+    if (e.type === 'delete') return `${e.label}\n  - Deleted work item`;
+    return `${e.label}\n` + Object.values(e.changes).map(c=>`  - ${c.label}: "${c.old}" -> "${c.new}"`).join('\n');
+  }).join('\n\n');
   if (navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(()=> alert('Edit log copied — paste it into an email or note to get the Google Sheet updated manually.'))
       .catch(()=> prompt('Copy this edit log manually:', text));
