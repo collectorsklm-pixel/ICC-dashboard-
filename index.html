@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICC Srikakulam — Progress Monitoring Dashboard</title>
+<style>
+  :root{
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* blue */
+    --series-2:       #eb6834; /* orange */
+    --series-3:       #1baf7a; /* aqua */
+    --series-4:       #eda100; /* yellow */
+    --good:           #0ca30c;
+    --warning:        #fab219;
+    --serious:        #ec835a;
+    --critical:       #d03b3b;
+    --good-bg:        #e7f6e7;
+    --warning-bg:     #fef3de;
+    --serious-bg:     #fde8e0;
+    --critical-bg:    #fbe4e4;
+  }
+  * { box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--page); color:var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap{ max-width:1280px; margin:0 auto; padding:28px 24px 80px; }
+
+  header.top{ margin-bottom:24px; }
+  header.top h1{ font-size:22px; font-weight:650; margin:0 0 4px; }
+  header.top .sub{ color:var(--text-secondary); font-size:13.5px; line-height:1.5; }
+  header.top .sub b{ color:var(--text-primary); font-weight:600; }
+
+  section{ margin-bottom:32px; }
+  h2.sectiontitle{ font-size:15px; font-weight:650; margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  h2.sectiontitle .count{ font-weight:500; color:var(--text-muted); font-size:12.5px; }
+  p.section-note{ color:var(--text-secondary); font-size:12.5px; margin:-6px 0 14px; line-height:1.5; }
+
+  /* KPI tiles */
+  .kpi-row{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; }
+  .kpi{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .kpi .label{ font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; }
+  .kpi .value{ font-size:26px; font-weight:650; line-height:1; }
+  .kpi .value.good{ color:var(--good); }
+  .kpi .foot{ font-size:11px; color:var(--text-muted); margin-top:6px; }
+
+  /* charts */
+  .chart-row{ display:grid; grid-template-columns: 1.1fr 1fr; gap:16px; align-items:stretch; }
+  .card{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .card h3{ font-size:13px; font-weight:650; margin:0 0 14px; }
+
+  .stackbar-row{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .stackbar-row .arealabel{ width:150px; font-size:12.5px; color:var(--text-secondary); flex-shrink:0; }
+  .stackbar{ flex:1; display:flex; height:22px; border-radius:5px; overflow:hidden; background:var(--gridline); }
+  .stackbar .seg{ height:100%; }
+  .stackbar-row .total{ width:34px; text-align:right; font-size:12px; color:var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:12px 16px; margin-top:10px; font-size:11.5px; color:var(--text-secondary); }
+  .legend .item{ display:flex; align-items:center; gap:6px; }
+  .legend .sw{ width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+  .donut-wrap{ display:flex; align-items:center; gap:22px; }
+
+  /* department-wise progress */
+  .dept-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
+  .dept-card{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .dept-card .dname{ font-weight:650; font-size:14px; margin-bottom:2px; }
+  .dept-card .dtotal{ font-size:11.5px; color:var(--text-muted); margin-bottom:10px; }
+  .dept-bar{ display:flex; height:16px; border-radius:5px; overflow:hidden; background:var(--gridline); margin-bottom:8px; }
+  .dept-bar .seg{ height:100%; }
+  .dept-stats{ display:flex; flex-wrap:wrap; gap:8px 14px; font-size:11px; color:var(--text-secondary); }
+  .dept-stats b{ color:var(--text-primary); font-variant-numeric:tabular-nums; }
+
+  /* urgent works */
+  .urgent-list{ display:flex; flex-direction:column; gap:8px; }
+  .urgent-row{ display:flex; align-items:flex-start; gap:12px; background:var(--critical-bg); border:1px solid rgba(208,59,59,0.3); border-radius:8px; padding:10px 14px; }
+  .urgent-row .due-badge{ flex-shrink:0; min-width:92px; text-align:center; font-size:11px; font-weight:700; padding:4px 8px; border-radius:6px; background:var(--critical); color:#fff; }
+  .urgent-row .due-badge.soon{ background:var(--warning); color:#3a2a00; }
+  .urgent-row .body .t{ font-weight:600; font-size:13px; }
+  .urgent-row .body .m{ font-size:11.5px; color:var(--text-secondary); margin-top:1px; }
+
+  /* stalled / no-activity */
+  .stalled-list{ display:flex; flex-direction:column; gap:6px; }
+  .stalled-row{ display:flex; align-items:flex-start; gap:12px; background:var(--page); border:1px solid var(--border); border-radius:8px; padding:9px 14px; }
+  .stalled-row .t{ font-weight:600; font-size:12.5px; min-width:220px; }
+  .stalled-row .m{ font-size:11.5px; color:var(--text-secondary); }
+  .stalled-row .status-chip{ flex-shrink:0; }
+
+  /* click-to-filter tiles */
+  .clickable{ cursor:pointer; transition:box-shadow .12s ease, transform .12s ease, border-color .12s ease; }
+  .clickable:hover{ box-shadow:0 2px 10px rgba(11,11,11,0.10); border-color:rgba(11,11,11,0.22); transform:translateY(-1px); }
+  .clickable:active{ transform:translateY(0); }
+  .clickable::after{ content:"Click to filter ↓"; display:block; font-size:9.5px; color:var(--text-muted); margin-top:6px; opacity:0; transition:opacity .12s ease; }
+  .clickable:hover::after{ opacity:1; }
+  .stackbar-row.clickable{ border-radius:8px; padding:4px 6px; margin-left:-6px; margin-right:-6px; }
+  .stackbar-row.clickable::after{ display:none; }
+  .legend .item.clickable{ padding:2px 6px; border-radius:6px; }
+  .legend .item.clickable::after{ display:none; }
+  .donut-legend-row.clickable::after{ display:none; }
+
+  .focus-banner{ display:none; align-items:center; gap:10px; background:#fff6d8; border:1px solid #f0d879; border-radius:9px; padding:10px 16px; margin:-14px 0 24px; font-size:12.5px; color:#5c4a05; }
+  .focus-banner.active{ display:flex; }
+  .focus-banner b{ font-weight:650; }
+  .focus-banner button{ margin-left:auto; font-family:inherit; font-size:12px; font-weight:600; padding:6px 14px; border-radius:7px; border:1px solid #d9be4a; background:#fff; color:#5c4a05; cursor:pointer; }
+  .focus-banner button:hover{ background:#fffbe8; }
+  .detail-section.dimmed{ display:none; }
+  .donut-wrap svg{ flex-shrink:0; }
+
+  /* proposal spotlight */
+  .proposal-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .proposal-item{ background:var(--warning-bg); border:1px solid rgba(250,178,25,0.35); border-radius:8px; padding:10px 12px; font-size:12.5px; }
+  .proposal-item .t{ font-weight:600; margin-bottom:2px; }
+  .proposal-item .m{ color:var(--text-secondary); font-size:11.5px; line-height:1.4; }
+
+  /* officer cards */
+  .officer-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .officer-card{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .officer-card .name{ font-weight:650; font-size:13px; margin-bottom:2px; }
+  .officer-card .n{ font-size:11.5px; color:var(--text-muted); margin-bottom:10px; }
+  .officer-card ul{ margin:0; padding-left:16px; font-size:12px; color:var(--text-secondary); line-height:1.6; max-height:140px; overflow-y:auto; }
+  .officer-card li{ margin-bottom:2px; }
+  .status-chip{ display:inline-block; padding:1px 7px; border-radius:20px; font-size:10px; font-weight:600; margin-left:4px; white-space:nowrap; }
+
+  /* filters + table */
+  .filters{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .filters select, .filters input[type=text]{
+    font-family:inherit; font-size:12.5px; padding:7px 10px; border-radius:7px;
+    border:1px solid var(--border); background:var(--surface-1); color:var(--text-primary);
+  }
+  .filters input[type=text]{ min-width:220px; }
+  table.reg{ width:100%; border-collapse:collapse; font-size:12.5px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  table.reg thead th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.02em; color:var(--text-muted);
+    background:var(--page); padding:9px 12px; border-bottom:1px solid var(--border); position:sticky; top:0; }
+  table.reg tbody td{ padding:9px 12px; border-bottom:1px solid var(--gridline); vertical-align:top; color:var(--text-secondary); }
+  table.reg tbody tr:last-child td{ border-bottom:none; }
+  table.reg tbody tr:hover{ background:var(--page); }
+  .tblwrap{ max-height:520px; overflow:auto; border-radius:10px; }
+  .item-name{ color:var(--text-primary); font-weight:550; }
+  .muted{ color:var(--text-muted); }
+
+  /* directory */
+  table.dir{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.dir th{ text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted); padding:8px 12px; border-bottom:1px solid var(--border); }
+  table.dir td{ padding:7px 12px; border-bottom:1px solid var(--gridline); color:var(--text-secondary); }
+
+  .cost-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .cost-card{ border:1px solid var(--border); border-radius:10px; padding:14px 16px; background:var(--surface-1); }
+  .cost-card .amt{ font-size:22px; font-weight:650; }
+  .cost-card .nm{ font-size:12.5px; color:var(--text-secondary); margin:4px 0 2px; }
+  .cost-card .nt{ font-size:11.5px; color:var(--text-muted); }
+
+  .notes-box{ background:var(--surface-1); border:1px solid var(--border); border-left:3px solid var(--serious); border-radius:8px; padding:14px 16px; font-size:12.5px; color:var(--text-secondary); line-height:1.6; }
+  .notes-box ul{ margin:6px 0 0; padding-left:18px; }
+
+  footer{ margin-top:40px; padding-top:16px; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-muted); }
+
+  /* reports tab section */
+  .reports-section{ background:var(--surface-1); border:1px solid var(--border); border-radius:12px; padding:18px 20px 20px; margin-bottom:28px; }
+  .report-tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .report-tab{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-secondary); cursor:pointer;
+  }
+  .report-tab:hover{ background:var(--surface-1); border-color:rgba(11,11,11,0.22); }
+  .report-tab.active{ background:var(--series-1); border-color:var(--series-1); color:#fff; }
+  .report-list{ display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
+  .report-row{ background:var(--page); border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; transition:box-shadow .12s ease, border-color .12s ease; }
+  .report-row:hover{ box-shadow:0 2px 10px rgba(11,11,11,0.10); border-color:rgba(11,11,11,0.22); }
+  .report-row .t{ font-weight:600; font-size:13px; }
+  .report-row .m{ font-size:11.5px; color:var(--text-secondary); margin-top:2px; }
+  .report-row .m2{ font-size:11.5px; margin-top:4px; line-height:1.5; }
+
+  /* edit-a-work-item section */
+  .edit-grid{ display:grid; grid-template-columns:280px 1fr; gap:20px; margin-bottom:18px; }
+  .edit-picker label, .edit-form label{ display:block; font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; font-weight:600; }
+  .edit-picker input[type=text]{ width:100%; font-family:inherit; font-size:12.5px; padding:7px 10px; border-radius:7px; border:1px solid var(--border); margin-bottom:8px; background:var(--surface-1); color:var(--text-primary); }
+  .edit-picker select{ width:100%; font-family:inherit; font-size:12px; border-radius:7px; border:1px solid var(--border); background:var(--surface-1); color:var(--text-primary); }
+  .edit-form{ display:flex; flex-direction:column; gap:12px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .edit-form select, .edit-form input[type=text], .edit-form textarea{
+    width:100%; font-family:inherit; font-size:12.5px; padding:7px 10px; border-radius:7px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-primary); resize:vertical;
+  }
+  .edit-actions{ display:flex; gap:10px; margin-top:4px; }
+  .edit-actions button, .edit-download button{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 16px; border-radius:7px;
+    border:1px solid var(--border); background:var(--surface-1); color:var(--text-primary); cursor:pointer;
+  }
+  #btnPreview, #btnConfirm{ background:var(--series-1); border-color:var(--series-1); color:#fff; }
+  #btnPreview:hover, #btnConfirm:hover{ opacity:0.9; }
+  .edit-preview{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .edit-preview h3{ font-size:13px; font-weight:650; margin:0 0 10px; }
+  table.diff-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:12px; }
+  table.diff-table th{ text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted); padding:6px 10px; border-bottom:1px solid var(--border); }
+  table.diff-table td{ padding:7px 10px; border-bottom:1px solid var(--gridline); vertical-align:top; }
+  .diff-old{ color:var(--critical); text-decoration:line-through; }
+  .diff-new{ color:var(--good); font-weight:600; }
+  .edit-log-wrap{ margin-bottom:18px; }
+  .edit-log-wrap h3{ font-size:13px; font-weight:650; margin:0 0 10px; display:flex; gap:8px; align-items:center; }
+  .edit-log{ display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
+  .edit-log-row{ background:var(--page); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-size:12px; }
+  .edit-log-row .t{ font-weight:600; margin-bottom:4px; }
+  .edit-log-row ul{ margin:0; padding-left:18px; color:var(--text-secondary); }
+  .edit-download{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+
+  @media (max-width: 980px){
+    .kpi-row{ grid-template-columns:repeat(3,1fr); }
+    .chart-row{ grid-template-columns:1fr; }
+    .officer-grid{ grid-template-columns:repeat(2,1fr); }
+    .proposal-grid{ grid-template-columns:1fr; }
+    .edit-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Integrated Collectorate Complex (ICC), Srikakulam — Progress Monitoring Dashboard</h1>
+    <div class="sub">
+      Collectorate Srikakulam &middot; Source: ICC Google Sheet (Issues / Area Wise / Contractor Phone Numbers tabs) &middot;
+      Generated <b id="genDate"></b> &middot; Latest field update captured in source: <b>05-Aug-2026</b>
+    </div>
+  </header>
+
+  <section class="reports-section" id="reportsSection">
+    <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
+    <p class="section-note">Quick review lists for a daily or once-in-3-days progress meeting — pick a tab. Rows are clickable and filter the full register further down.</p>
+    <div class="report-tabs">
+      <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
+      <button type="button" class="report-tab" data-report="weekly">📈 Weekly progress (movement this week)</button>
+      <button type="button" class="report-tab" data-report="notaken">⚠️ Not taken up this week</button>
+    </div>
+    <div id="reportBody" class="report-list"></div>
+  </section>
+
+  <section>
+    <div class="kpi-row" id="kpiRow"></div>
+  </section>
+
+  <div class="focus-banner" id="focusBanner">
+    <span>🔎 Showing only: <b id="focusLabel"></b></span>
+    <button id="focusClear" type="button">✕ Clear filter — show full dashboard</button>
+  </div>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Progress overview</h2>
+    <p class="section-note">Every tracked civil/electrical/interior line item, classified into a four-stage funnel from its free-text status remark in the source sheet. Automated classification — see Data Quality Notes at the bottom for caveats.</p>
+    <div class="chart-row">
+      <div class="card">
+        <h3>Area-wise status breakdown</h3>
+        <div id="areaChart"></div>
+        <div class="legend" id="statusLegend"></div>
+      </div>
+      <div class="card">
+        <h3 id="donutTitle">Overall status distribution</h3>
+        <div class="donut-wrap">
+          <svg id="donut" width="180" height="180" viewBox="0 0 180 180"></svg>
+          <div id="donutLegend" style="font-size:12.5px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Progress by executing department <span class="count" id="deptCount"></span></h2>
+    <p class="section-note">Every tracked item resolved to its executing department (R&amp;B, SUDA, APEPDCL, NEDCAP) via the Contractor &amp; Phone Numbers directory and known project personnel. Items with no resolvable department are grouped as "Not Assigned" — see the Contractor &amp; Department Register for the detailed gap list.</p>
+    <div class="dept-grid" id="deptGrid"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">🔴 Urgent works <span class="count" id="urgentCount"></span></h2>
+    <p class="section-note">Not-yet-completed items that are overdue against their own Estimated Time of Completion, due within 3 weeks (as of 08-Aug-2026), or explicitly tied to the inauguration deadline with no other schedule buffer.</p>
+    <div class="urgent-list" id="urgentList"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">⚠️ No activity this week <span class="count" id="stalledCount"></span></h2>
+    <p class="section-note" id="stalledNote"></p>
+    <div class="stalled-list" id="stalledList"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Proposal / Tender / Design Stage <span class="count" id="proposalCount"></span></h2>
+    <p class="section-note">Items awaiting estimates, tender invitation, rate approval, or design finalisation before execution can start — the pre-construction pipeline the Engineering Section should track for approvals.</p>
+    <div class="proposal-grid" id="proposalGrid"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Officer / Agency-wise work allotment <span class="count" id="officerCount"></span></h2>
+    <p class="section-note">Grouped by the "Pending With" field across both the Area Tracker and Issues List. Name variants (e.g. "Vamsi", "Vamsi Krishna", "Vamsi garu") are merged to one entity.</p>
+    <div class="officer-grid" id="officerGrid"></div>
+  </section>
+
+  <section id="registerSection">
+    <h2 class="sectiontitle">Work item register <span class="count" id="regCount"></span></h2>
+    <p class="section-note">Combines the Area-wise Execution Tracker and the Issues punch list into one filterable register. Every tile, card and chart segment above is clickable and filters this register.</p>
+    <div class="filters">
+      <input type="text" id="fSearch" placeholder="Search item, area, remarks…">
+      <select id="fSource"><option value="">All sources</option></select>
+      <select id="fArea"><option value="">All areas / sections</option></select>
+      <select id="fStatus"><option value="">All statuses</option></select>
+      <select id="fDept"><option value="">All departments</option></select>
+      <select id="fPending"><option value="">All pending-with</option></select>
+    </div>
+    <div class="tblwrap">
+      <table class="reg">
+        <thead><tr>
+          <th>Source</th><th>Area / Section</th><th>Item</th><th>Status</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
+        </tr></thead>
+        <tbody id="regBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="detail-section" id="editSection">
+    <h2 class="sectiontitle">✏️ Edit a work item</h2>
+    <p class="section-note">
+      Search for an item, change any field, and preview the change before applying — nothing is written until you confirm.
+      Confirmed edits update the charts, department cards and register above live, but exist only in this browser tab: refreshing the page discards them.
+      Use <b>Download updated dashboard</b> to save a new file with your edits baked in, or <b>Copy edit log</b> to relay the changes for a manual update of the source Google Sheet — this dashboard has no direct write access to Google Sheets.
+    </p>
+    <div class="edit-grid">
+      <div class="edit-picker">
+        <label for="editSearch">Search item</label>
+        <input type="text" id="editSearch" placeholder="Type item name, area…">
+        <label for="editSelect">Select item</label>
+        <select id="editSelect" size="10"></select>
+      </div>
+      <div class="edit-form" id="editForm" style="display:none;">
+        <div>
+          <label for="edStatusCat">Status category</label>
+          <select id="edStatusCat"></select>
+        </div>
+        <div>
+          <label for="edStatusRaw">Status remark</label>
+          <textarea id="edStatusRaw" rows="2"></textarea>
+        </div>
+        <div>
+          <label for="edPending">Pending with / officer</label>
+          <input type="text" id="edPending">
+        </div>
+        <div>
+          <label for="edDept">Executing department</label>
+          <select id="edDept"></select>
+        </div>
+        <div id="edEstWrap">
+          <label for="edEst">Est. completion (Area Tracker items only)</label>
+          <input type="text" id="edEst">
+        </div>
+        <div>
+          <label for="edContractor">Contractor</label>
+          <input type="text" id="edContractor">
+        </div>
+        <div class="edit-actions">
+          <button type="button" id="btnPreview">Preview changes</button>
+          <button type="button" id="btnCancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div class="edit-preview" id="editPreview" style="display:none;">
+      <h3>Preview — confirm before applying</h3>
+      <table class="diff-table" id="diffTable"></table>
+      <div class="edit-actions">
+        <button type="button" id="btnConfirm">✔ Confirm &amp; apply</button>
+        <button type="button" id="btnDiscard">✕ Discard</button>
+      </div>
+    </div>
+    <div class="edit-log-wrap">
+      <h3>Edit log <span class="count" id="editLogCount">(0)</span></h3>
+      <div id="editLog" class="edit-log"><div class="section-note">No edits yet this session.</div></div>
+      <p class="section-note" id="syncStatus" style="margin-top:8px;">Checking shared sync…</p>
+    </div>
+    <div class="edit-download">
+      <button type="button" id="btnRefreshSync">🔄 Refresh shared edits</button>
+      <button type="button" id="btnDownloadCsv">📊 Download formatted Excel (.xls)</button>
+      <button type="button" id="btnDownload">⬇ Download updated dashboard (.html)</button>
+      <button type="button" id="btnCopyLog">📋 Copy edit log</button>
+    </div>
+    <p class="section-note" style="margin-top:8px;">
+      <b>Easiest way to get your edits into the real Google Sheet:</b> click <b>Download formatted Excel</b> —
+      it saves the full work-item list (with any edits you've made) as a ready-formatted .xls file: bold header,
+      sized columns, and any row you've edited highlighted with the exact date &amp; time of the edit — no manual
+      reformatting needed when you open it. In Google Sheets you can also bring it in via
+      <b>File → Import → Upload</b>, choosing "Insert new sheet" or "Replace current sheet" for the relevant tab.
+      This needs no Google sign-in and nothing to deploy.
+      (Note: Excel may show a one-time "format and extension don't match" prompt when opening — this is expected
+      for this file type; click Yes/OK and it opens fully formatted.)
+    </p>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Financial mentions</h2>
+    <p class="section-note">The source sheet does not maintain a structured cost/financial ledger — these are the only two cost figures found anywhere in the free-text remarks.</p>
+    <div class="cost-grid" id="costGrid"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Contractor &amp; executing department directory <span class="count" id="dirCount"></span></h2>
+    <div class="tblwrap" style="max-height:360px;">
+      <table class="dir">
+        <thead><tr><th>Sl. No</th><th>Name of Work</th><th>Contractor</th><th>Executing Dept.</th><th>Phone</th></tr></thead>
+        <tbody id="dirBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Data quality notes</h2>
+    <div class="notes-box" id="notesBox"></div>
+  </section>
+
+  <footer>
+    Rebuilt from the ICC Google Sheet in a fresh session on <span id="genDate2"></span> (the previous dashboard file from an earlier session was not available to load or reference). Status categories, officer-name merges, and contractor matches are derived programmatically — please have the Engineering Section spot-check before circulating externally.
+  </footer>
+
+</div>
+
+<script>
+const DATA = {"kpis": {"total_tracked": 89, "total_area_items": 51, "total_issue_items": 38, "completed_n": 25, "inprogress_n": 18, "proposal_n": 17, "notstarted_n": 29, "areas_covered": 2, "officers_agencies": 15, "contractors_directory": 33, "cost_mentions": [{"item": "Parking Area Restroom / Toilets", "amount": "\u20b990.00 lakh", "note": "Estimate approved; tenders to be invited"}, {"item": "CCTV Surveillance (additional cameras)", "amount": "\u20b975.00 lakh", "note": "Estimate stage"}], "status_dist_overall": {"In Progress": 18, "Tracked via completion date": 6, "Completed": 22, "Not Started": 4, "Design Stage": 5, "Other / Mixed": 1, "Proposal / Tender Stage": 12, "Pending (Dependent on Other Work)": 10, "Pending": 6, "Partially Complete": 3, "Not Recorded": 2}}, "area_summary": {"Outside": {"In Progress": 3, "Tracked via completion date": 6, "Completed": 4, "Not Started": 1, "Design Stage": 1, "Other / Mixed": 1, "Proposal / Tender Stage": 3, "Pending (Dependent on Other Work)": 4}, "Main Building": {"Pending": 1, "Completed": 11, "Not Started": 3, "In Progress": 5, "Partially Complete": 2, "Design Stage": 2, "Proposal / Tender Stage": 2, "Pending (Dependent on Other Work)": 2}}, "officer_cards": [{"officer": "R&B", "count": 8, "items": [{"source": "Area Tracker", "area": "Outside", "subarea": "Main Gate", "item": "Toilet", "status_cat": "Proposal / Tender Stage", "est_completion": null}, {"source": "Area Tracker", "area": "Outside", "subarea": "Road", "item": "BT Portion", "status_cat": "Pending (Dependent on Other Work)", "est_completion": "31-08-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Area near RTGS building", "item": "Kerb wall( To support footpath side plantation)", "status_cat": "Pending (Dependent on Other Work)", "est_completion": "31-08-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Island and nearby (front of building)", "item": "Kerb wall", "status_cat": "Pending (Dependent on Other Work)", "est_completion": "31-08-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Roads going towards back side of building", "item": "BT Portion", "status_cat": "Pending (Dependent on Other Work)", "est_completion": "31/08/2026"}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Parking area restroom facility (Toilets)", "status_cat": "Proposal / Tender Stage", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Tea stall layout proposal (Canteen)", "status_cat": "Proposal / Tender Stage", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Traffic calming measures (speed breakers)", "status_cat": "Design Stage", "est_completion": null}]}, {"officer": "Mr. Kundan (Interior Contractor)", "count": 8, "items": [{"source": "Area Tracker", "area": "Main Building", "subarea": "Industrial centre", "item": "Partition work", "status_cat": "Not Started", "est_completion": "31-08-2026"}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Collector's Chamber", "status_cat": "Partially Complete", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Joint Collector's Chamber", "status_cat": "Pending", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Collector & JC Meeting Hall", "status_cat": "Pending", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Training Hall", "status_cat": "Pending", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Six Meeting Hall & Conference Rooms", "status_cat": "Pending", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Interiors - Industrial Centre", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Main entrance", "status_cat": "Design Stage", "est_completion": null}]}, {"officer": "DJPR Constructions (Civil Contractor)", "count": 7, "items": [{"source": "Area Tracker", "area": "Outside", "subarea": "Main Gate", "item": "Guard room", "status_cat": "Other / Mixed", "est_completion": "30-11-2026"}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Exit from four-wheeler parking (at grade)", "status_cat": "Pending (Dependent on Other Work)", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Central median", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Gabian wall", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Sanitary fittings (commodes, taps, basins, urinals)", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "HVAC copper pipe installation", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "HVAC copper pipe installation in all staff Halls/Rooms", "status_cat": "In Progress", "est_completion": null}]}, {"officer": "Mr. Vamsi Krishna (Architect/Designer)", "count": 6, "items": [{"source": "Area Tracker", "area": "Outside", "subarea": "Main Gate", "item": "Inauguration Stone", "status_cat": "Not Started", "est_completion": "15-09-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Main Gate", "item": "Collectorate Name Board At Gate", "status_cat": "Design Stage", "est_completion": "15-09-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Back side of building - road and park", "item": "BT Road", "status_cat": "In Progress", "est_completion": "31/08/2026"}, {"source": "Area Tracker", "area": "Main Building", "subarea": "cafeteria", "item": "2nd floor", "status_cat": "Design Stage", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Bollards \u2013 design & location plan", "status_cat": "Proposal / Tender Stage", "est_completion": null}, {"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Sandstone cladding for ICC elevation", "status_cat": "In Progress", "est_completion": null}]}, {"officer": "Mr. Vijay \u2013 R K Solar / NEDCAP", "count": 4, "items": [{"source": "Area Tracker", "area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "Parking Shed", "status_cat": "Proposal / Tender Stage", "est_completion": "31-10-2026"}, {"source": "Area Tracker", "area": "Outside", "subarea": "Parking Area - Two wheelers", "item": "Parking Shed", "status_cat": "Proposal / Tender Stage", "est_completion": "31-10-2026"}, {"source": "Area Tracker", "area": "Main Building", "subarea": "Electrical Works", "item": "Solar Panels over Parking", "status_cat": "In Progress", "est_completion": null}, {"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Solar system installation (parking)", "status_cat": "In Progress", "est_completion": null}]}, {"officer": "Ali Architect (Wall Art Designer)", "count": 2, "items": [{"source": "Area Tracker", "area": "Main Building", "subarea": "Wall arts", "item": "Wall arts", "status_cat": "Design Stage", "est_completion": null}, {"source": "Area Tracker", "area": "Main Building", "subarea": "Sign Boards", "item": "Sign Boards", "status_cat": "Proposal / Tender Stage", "est_completion": null}]}, {"officer": "Mr. D. Hemachandra (Statue Estimate)", "count": 1, "items": [{"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Statue location", "status_cat": "Proposal / Tender Stage", "est_completion": null}]}, {"officer": "Mr. Deepak Sharma (3M \u2013 Signage)", "count": 1, "items": [{"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Signage boards", "status_cat": "Proposal / Tender Stage", "est_completion": null}]}, {"officer": "Mr. Prasanna Kumar", "count": 1, "items": [{"source": "Issues List", "area": "Civil Items", "subarea": null, "item": "Godrej for Tables", "status_cat": "In Progress", "est_completion": null}]}, {"officer": "APEPDCL", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Transformer installation", "status_cat": "Pending", "est_completion": null}]}, {"officer": "EE, Electrical (R&B)", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Audio & video systems", "status_cat": "Pending (Dependent on Other Work)", "est_completion": null}]}, {"officer": "M/s Johnson Lifts Pvt. Ltd.", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Lifts (5Nos Lift well provisions)", "status_cat": "Completed", "est_completion": null}]}, {"officer": "M/s Atluri & Co.", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Providing Public Address System to all the corridors & Common toilets .", "status_cat": "Pending (Dependent on Other Work)", "est_completion": null}]}, {"officer": "M/s The Advanced Communication Systems & Services", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Providing Additional CCTV Surveillance system", "status_cat": "Pending (Dependent on Other Work)", "est_completion": null}]}, {"officer": "SUDA", "count": 1, "items": [{"source": "Issues List", "area": "Electrical Items", "subarea": null, "item": "Providing facade lighting to the front elevation and external decorative poles with lighting", "status_cat": "Proposal / Tender Stage", "est_completion": null}]}], "area_items": [{"area": "Outside", "subarea": "Main Gate", "item": "Cladding - Sand Stone/HPL/ACP", "track": "Civil", "status_raw": "In Progress", "pending_with": null, "est_completion": "31/08/2026", "latest_update": "Work is in progress", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "match_score": 1.0, "status_cat": "In Progress"}, {"area": "Outside", "subarea": "Main Gate", "item": "Plantation in front and sides of the gate", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": null, "latest_update": "Work is in progress", "contractor": null, "dept": null, "phone": null, "match_score": 0.47, "status_cat": "Tracked via completion date"}, {"area": "Outside", "subarea": "Main Gate", "item": "Cobbled Stone entrance (semi circle)", "track": "Civil", "status_raw": "Completed", "pending_with": "NA", "est_completion": null, "latest_update": "completed", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "match_score": 0.79, "status_cat": "Completed"}, {"area": "Outside", "subarea": "Main Gate", "item": "Inauguration Stone", "track": "Civil", "status_raw": "Work is yet to start", "pending_with": "Mr. Vamsi Krishna", "est_completion": "15-09-2026", "latest_update": "Designs to be Finalised at entrance portico", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "match_score": 1.0, "status_cat": "Not Started"}, {"area": "Outside", "subarea": "Main Gate", "item": "Collectorate Name Board At Gate", "track": "Civil", "status_raw": "Designs not finalized", "pending_with": "Mr. Vamsi Krishna", "est_completion": "15-09-2026", "latest_update": "Designs to be Finalised", "contractor": "Deepak Sharma 3M", "dept": "R&B", "phone": "9971746643", "match_score": 1.0, "status_cat": "Design Stage"}, {"area": "Outside", "subarea": "Main Gate", "item": "Guard room", "track": "Civil", "status_raw": "Flooring and Windows to be Installed to be done", "pending_with": "DJPR", "est_completion": "30-11-2026", "latest_update": "Flooring and Windows to be Installed to be done ", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 0.65, "status_cat": "Other / Mixed"}, {"area": "Outside", "subarea": "Main Gate", "item": "Toilet", "track": "Civil", "status_raw": "\u20b990.00 lakh estimate approved, Tenders to be invited", "pending_with": "R&B", "est_completion": null, "latest_update": null, "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.44, "status_cat": "Proposal / Tender Stage"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "Paver blocks", "track": "Civil", "status_raw": "Completed", "pending_with": "NA", "est_completion": null, "latest_update": "Completed", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "All round land scapping and plantation", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": "28/02/2026", "latest_update": "Completed", "contractor": null, "dept": null, "phone": null, "match_score": 0.38, "status_cat": "Tracked via completion date"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "compound wall", "track": "Civil", "status_raw": "Completed", "pending_with": "NA", "est_completion": null, "latest_update": "Completed", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "Parking Shed", "track": "Civil", "status_raw": "Estimates will be submitted with in one week by Mr. Vijay garu", "pending_with": "Mr. Vijay RK Solar", "est_completion": "31-10-2026", "latest_update": "Estimates will be submitted with in one week ", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Proposal / Tender Stage"}, {"area": "Outside", "subarea": "Parking Area - Two wheelers", "item": "Paver blocks", "track": "Civil", "status_raw": "Completed", "pending_with": "NA", "est_completion": null, "latest_update": "Completed paver blocks ", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Outside", "subarea": "Parking Area - Two wheelers", "item": "All round land scapping and plantation", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": "28/02/2026", "latest_update": "Completed paver blocks ", "contractor": null, "dept": null, "phone": null, "match_score": 0.38, "status_cat": "Tracked via completion date"}, {"area": "Outside", "subarea": "Parking Area - Two wheelers", "item": "Parking Shed", "track": "Civil", "status_raw": "Estimates will be submitted with in one week by Mr. Vijay garu", "pending_with": "Pending with Vijay Garu for  Estimation submission", "est_completion": "31-10-2026", "latest_update": "Estimates will be submitted with in one week by Mr. Vijay garu", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Proposal / Tender Stage"}, {"area": "Outside", "subarea": "Road", "item": "Median", "track": "Civil", "status_raw": "P.C.C & C.C work in progress", "pending_with": null, "est_completion": "15-08-2026", "latest_update": "P.C.C & C.C work in progress", "contractor": null, "dept": null, "phone": null, "match_score": 0.55, "status_cat": "In Progress"}, {"area": "Outside", "subarea": "Road", "item": "BT Portion", "track": "Civil", "status_raw": "After Construction of   Median , Roads will be laid", "pending_with": "R&B", "est_completion": "31-08-2026", "latest_update": "After Construction of   Median , Roads will be laid", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.39, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Outside", "subarea": "Area near RTGS building", "item": "Kerb wall( To support footpath side plantation)", "track": "Civil", "status_raw": "After resumption of Plantation work.", "pending_with": "R&B", "est_completion": "31-08-2026", "latest_update": "After resumption of Plantation work.", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.35, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Outside", "subarea": "Area near RTGS building", "item": "Open area near RTGS", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": "31/03/2026", "latest_update": "After resumption of Plantation work.", "contractor": null, "dept": null, "phone": null, "match_score": 0.5, "status_cat": "Tracked via completion date"}, {"area": "Outside", "subarea": "Island and nearby (front of building)", "item": "Kerb wall", "track": "Civil", "status_raw": "After resumption of Plantation work.", "pending_with": "R&B", "est_completion": "31-08-2026", "latest_update": "After resumption of Plantation work.", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.45, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Outside", "subarea": "Island and nearby (front of building)", "item": "Land Scapping", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": "31/03/2026", "latest_update": null, "contractor": "Main Contractor", "dept": null, "phone": "9292356666", "match_score": 0.55, "status_cat": "Tracked via completion date"}, {"area": "Outside", "subarea": "Roads going towards back side of building", "item": "BT Portion", "track": "Civil", "status_raw": "After completion of median and silt pit", "pending_with": "R&B", "est_completion": "31/08/2026", "latest_update": "After Construction of   Median , Roads will be laid", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.39, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Outside", "subarea": "Back side of building - road and park", "item": "BT Road", "track": "Civil", "status_raw": "Gabion Wall is in Progress and Park design has been submitted by Mr. Vamsi Krishna garu", "pending_with": "Mr. Vamsi Krishna", "est_completion": "31/08/2026", "latest_update": "Gabion Wall is in Progress and Park design has been submitted by Mr. Vamsi Krishna garu", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.44, "status_cat": "In Progress"}, {"area": "Outside", "subarea": "Back side of building - road and park", "item": "Park", "track": "Landscaping", "status_raw": null, "pending_with": null, "est_completion": null, "latest_update": "Gabion Wall is in Progress and Park design has been submitted by Mr. Vamsi Krishna garu", "contractor": null, "dept": null, "phone": null, "match_score": 0.5, "status_cat": "Tracked via completion date"}, {"area": "Main Building", "subarea": "exterior main entrance", "item": "Sand stone/ HPL Sheet/ Suitable painting", "track": "Civil", "status_raw": "Regarding Entrance Elevation,sand stone  is pending for facade lighting installation and jaili work is stopped due to the load of jali to be arrived to the site.", "pending_with": null, "est_completion": "31/08/2026", "latest_update": "Regarding Entrance Elevation,sand stone  is pending for facade lighting installation and jaili work is stopped due to the load of jali to be arrived to the site. ", "contractor": null, "dept": null, "phone": null, "match_score": 0.52, "status_cat": "Pending"}, {"area": "Main Building", "subarea": "exterior remaining portion", "item": "Sand stone/ HPL Sheet/ Suitable painting", "track": "Civil", "status_raw": "Sand stone on side walls is completed", "pending_with": null, "est_completion": "31/08/2026", "latest_update": "Sand stone on side walls is completed", "contractor": null, "dept": null, "phone": null, "match_score": 0.52, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Inside reception area", "item": "Front Entrance", "track": "Civil", "status_raw": "plasterings is done and yet to start work using Yellow sand stone", "pending_with": null, "est_completion": "31/08/2026", "latest_update": "plasterings is done and yet to start work using Yellow sand stone", "contractor": "Vamsi", "dept": null, "phone": "9989641097", "match_score": 0.61, "status_cat": "Not Started"}, {"area": "Main Building", "subarea": "open space 4 nos (between the corridors)", "item": "furniture", "track": "Civil", "status_raw": "Godrej furniture for Revenue Section has arrived to collectorate and installation is in progress", "pending_with": null, "est_completion": "31/08/2026", "latest_update": "Godrej furniture for Revenue Section has arrived to collectorate and installation is in progress", "contractor": null, "dept": null, "phone": null, "match_score": 0.37, "status_cat": "In Progress"}, {"area": "Main Building", "subarea": "conference halls (6 nos)", "item": "Ceilings", "track": "Civil", "status_raw": "completed", "pending_with": null, "est_completion": null, "latest_update": "Completed ", "contractor": null, "dept": null, "phone": null, "match_score": 0.52, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "conference halls (6 nos)", "item": "Interior works", "track": "Civil", "status_raw": "All wall Panelling works are completed and table work completed and acoustic panelling work is in progress(80% completed)", "pending_with": null, "est_completion": "31-08-2026", "latest_update": "All wall Panelling works are completed and table work completed and acoustic panelling work is in progress(80% completed)", "contractor": null, "dept": null, "phone": null, "match_score": 0.44, "status_cat": "Partially Complete"}, {"area": "Main Building", "subarea": "Training hall", "item": "Partition work", "track": "Civil", "status_raw": "Not yet started", "pending_with": null, "est_completion": "31-08-2026", "latest_update": "Wall panelling work is done", "contractor": null, "dept": null, "phone": null, "match_score": 0.5, "status_cat": "Not Started"}, {"area": "Main Building", "subarea": "Industrial centre", "item": "Partition work", "track": "Civil", "status_raw": "Not yet started", "pending_with": "Kundan garu", "est_completion": "31-08-2026", "latest_update": "Wall panelling work is in progress", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.5, "status_cat": "Not Started"}, {"area": "Main Building", "subarea": "PMU and Control room", "item": "Partition work", "track": "Civil", "status_raw": "Completed", "pending_with": null, "est_completion": null, "latest_update": "Completed ", "contractor": null, "dept": null, "phone": null, "match_score": 0.5, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Collector and JC Chamber along with meeting hall", "item": "Interior works", "track": "Civil", "status_raw": "work is in progress", "pending_with": null, "est_completion": "31-08-2026", "latest_update": "In progress", "contractor": null, "dept": null, "phone": null, "match_score": 0.44, "status_cat": "In Progress"}, {"area": "Main Building", "subarea": "Departmental blocks", "item": "Partition work", "track": "Civil", "status_raw": "Completed", "pending_with": null, "est_completion": null, "latest_update": "Completed ", "contractor": null, "dept": null, "phone": null, "match_score": 0.5, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "toilets and other common ammenities", "item": "Sanitary fittings", "track": "Civil", "status_raw": "Completed", "pending_with": null, "est_completion": null, "latest_update": "Sanitary Fittings are in Progress ", "contractor": null, "dept": null, "phone": null, "match_score": 0.46, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Corridors", "item": "Ceilings", "track": "Civil", "status_raw": "In progress", "pending_with": null, "est_completion": "15-08-2026", "latest_update": "Not yet started", "contractor": null, "dept": null, "phone": null, "match_score": 0.52, "status_cat": "In Progress"}, {"area": "Main Building", "subarea": "Integrated Collectortae Complex", "item": "Compound Wall", "track": "Civil", "status_raw": "Completed", "pending_with": null, "est_completion": null, "latest_update": "Completed ", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Wall arts", "item": "Wall arts", "track": "Civil", "status_raw": "Designs to be Finalised by JC sir", "pending_with": "Designs to be Finalised by Ali garu", "est_completion": null, "latest_update": "Designs to be Finalised by JC Sir", "contractor": "Ali Architect", "dept": "R&B", "phone": "9849257860", "match_score": 1.0, "status_cat": "Design Stage"}, {"area": "Main Building", "subarea": "Sign Boards", "item": "Sign Boards", "track": "Civil", "status_raw": "Designs finalised and The estimates and BOQ  have been submitted waiting for rate approval confirmation from CE Buildings", "pending_with": "Designs to be Finalised Mr. Sharma (3M)", "est_completion": null, "latest_update": "Designs finalised and The estimates and BOQ  have been submitted waiting for rate approval confirmation from CE Buildings", "contractor": "Deepak Sharma 3M", "dept": "R&B", "phone": "9971746643", "match_score": 1.0, "status_cat": "Proposal / Tender Stage"}, {"area": "Main Building", "subarea": "Statue in Median", "item": "Statue in Median", "track": "Civil", "status_raw": "Estimate preparation is in progress", "pending_with": null, "est_completion": null, "latest_update": "Estimate preparation is in progress", "contractor": "Divili Hema Chandra", "dept": "R&B", "phone": "8309096929", "match_score": 1.0, "status_cat": "In Progress"}, {"area": "Main Building", "subarea": "cafeteria", "item": "2nd floor", "track": "Civil", "status_raw": "Designs to be Finalised by Vamsi garu", "pending_with": "Designs to be Finalised by Vamsi garu", "est_completion": null, "latest_update": "Designs to be Finalised by Vamsi garu", "contractor": null, "dept": "R&B", "phone": null, "match_score": 0.38, "status_cat": "Design Stage"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "AC Copper piping", "track": "Civil", "status_raw": "Indoor work completed, Shaft work is pending and it is about to complete in 2 weeks and RA Bills payment is problem for progress", "pending_with": "Solar panels on the main gate (possibility)", "est_completion": null, "latest_update": "Indoor work completed, Shaft work is pending and it is about to complete in 2 weeks and RA Bills payment is problem for progress", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Partially Complete"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Public Addressing System", "track": "Civil", "status_raw": "Public Addressing System : Wiring completed in Corridor and after finishing of Paints Speakers will be Installed", "pending_with": null, "est_completion": null, "latest_update": "2. Public Addressing System : Wiring completed in Corridor and after finishing of Paints Speakers will be Installed", "contractor": "M/s Atluriu &Co", "dept": "R&B", "phone": "9290094660", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Lights & Fans", "track": "Civil", "status_raw": "completed", "pending_with": null, "est_completion": null, "latest_update": "completed", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Audio & Video Systems", "track": "Civil", "status_raw": "AV system in Collector's conf hall & NIC Conf hall will be installed after installation of table corian sheet", "pending_with": null, "est_completion": null, "latest_update": "AV system in Collector's conf hall & NIC Conf hall will be installed after installation of table corian sheet", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "match_score": 1.0, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Sensors", "track": "Civil", "status_raw": "Already 5 nos censors ordered . once one circuit of AC system installed , censors will be tested and accordingly for all acs sensors will be ordered", "pending_with": null, "est_completion": null, "latest_update": "Already 5 nos censors ordered . once one circuit of AC system installed , censors will be tested and accordingly for all acs sensors will be ordered", "contractor": "Sri Gayatri Power Technologies", "dept": "R&B", "phone": "9985812953", "match_score": 1.0, "status_cat": "Pending (Dependent on Other Work)"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "CC Tv (75 lakhs Estimate)", "track": "Civil", "status_raw": "PVCpiping & cat6 cabling completed.cameras  in 50 numbers will be completed after painting and additional cameras of 160 in number have been ordered", "pending_with": null, "est_completion": null, "latest_update": "PVCpiping & cat6 cabling completed.cameras  in 50 numbers will be completed after painting and additional cameras of 160 in number have been ordered", "contractor": "M/S The Advanced Communication Sytems And Service", "dept": "R&B", "phone": "9618908222", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "External Additional Cabling from T/F Yard to Metering Panels", "track": "Civil", "status_raw": "Cable work completed and additional panels have been ordered and will be arrived", "pending_with": null, "est_completion": null, "latest_update": "Cable work completed and additional panels have been ordered and will be arrived", "contractor": "M/s Nandini Contractors", "dept": "R&B", "phone": "9866022859", "match_score": 1.0, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "5 Lifts", "track": "Civil", "status_raw": "All 4 nos lifts completed and 5th lift is yet to receive", "pending_with": null, "est_completion": null, "latest_update": "All 4 nos lifts completed and 5th lift is yet to receive", "contractor": "Jhonson Company", "dept": "R&B", "phone": "9704111022", "match_score": 0.83, "status_cat": "Completed"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "FACADE LIGHTING", "track": "Civil", "status_raw": "Agency to be finalised by SUDA", "pending_with": null, "est_completion": null, "latest_update": "Agency to be finalised by SUDA", "contractor": null, "dept": "SUDA", "phone": null, "match_score": 1.0, "status_cat": "Proposal / Tender Stage"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Solar Panels over Parking", "track": "Civil", "status_raw": "The structural designer from Hyderabad, along with Mr. Vijay garu, visited on 31-07-2026 and held detailed discussions with the R&B department.\n\u200bThe preparation of the estimates is currently underway and is expected to take approximately one week for final submission.", "pending_with": "NEDCAP/ Vijay", "est_completion": null, "latest_update": "The structural designer from Hyderabad, along with Mr. Vijay garu, visited on 31-07-2026 and held detailed discussions with the R&B department.\n\u200bThe preparation of the estimates is currently underway and is expected to take approximately one week for final submission.", "contractor": null, "dept": "NEDCAP", "phone": null, "match_score": 0.44, "status_cat": "In Progress"}], "issue_items": [{"section": "Civil Items", "sno": 1.0, "item": "Main Entrance Gate \u2013 cobblestone design", "status_raw": "Completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Civil Items", "sno": 2.0, "item": "Public entry provision (small gate)", "status_raw": "Completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Civil Items", "sno": 3.0, "item": "Bollards \u2013 design & location plan", "status_raw": "Quotations to be received", "contractor": "Mr. Vamsi Krishna", "pending_with": "Mr. Vamsi Krishna", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 4.0, "item": "Parking area restroom facility (Toilets)", "status_raw": "\u20b990.00 lakh estimate approved, Tenders to be invited", "contractor": "R&B", "pending_with": "R&B", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 5.0, "item": "Tea stall layout proposal (Canteen)", "status_raw": "Estimates Approved, Tenders to be invited", "contractor": "R&B", "pending_with": "R&B", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 6.0, "item": "Traffic calming measures (speed breakers)", "status_raw": "Finalised", "contractor": "R&B", "pending_with": "R&B", "remarks": null, "remarks2": null, "status_cat": "Design Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 7.0, "item": "Sandstone cladding for ICC elevation", "status_raw": "Work is in progress", "contractor": "Mr. Vamsi Krishna", "pending_with": "Mr. Vamsi Krishna", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Civil Items", "sno": 8.0, "item": "Paver block paving schedule", "status_raw": "completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Civil Items", "sno": 9.0, "item": "Exit from four-wheeler parking (at grade)", "status_raw": "Will be modified accordingly", "contractor": "DJPR", "pending_with": "DJPR", "remarks": null, "remarks2": null, "status_cat": "Pending (Dependent on Other Work)", "dept": "R&B"}, {"section": "Civil Items", "sno": 10.0, "item": "Roadside footpath plantation", "status_raw": "Work is in progress", "contractor": null, "pending_with": null, "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": null}, {"section": "Civil Items", "sno": 11.0, "item": "Landscaping & plantation works (Balance)", "status_raw": "Agency to be finalised", "contractor": null, "pending_with": null, "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": null}, {"section": "Civil Items", "sno": 12.0, "item": "Central median", "status_raw": "Work is in progress", "contractor": "DJPR", "pending_with": "DJPR", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Statue location", "status_raw": "Identified, estimates to be prepared", "contractor": "Mr. D Hemachandra", "pending_with": "Mr. D Hemachandra", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 13.0, "item": "Compound wall reconstruction", "status_raw": "Completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Civil Items", "sno": 14.0, "item": "Interiors - Collector's Chamber", "status_raw": "Panelling work completed; Windows , Ceiling & Glass Partition Pending", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Partially Complete", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Interiors - Joint Collector's Chamber", "status_raw": "Panelling , Windows, Ceiling Pending", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Pending", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Interiors - Collector & JC Meeting Hall", "status_raw": "Acoustic Panelling Pending", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Pending", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Interiors - Training Hall", "status_raw": "Partition wall pending", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Pending", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Interiors - Six Meeting Hall & Conference Rooms", "status_raw": "Acoustic Panelling, Table Work & Ceiling Pending", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Pending", "dept": "R&B"}, {"section": "Civil Items", "sno": null, "item": "Interiors - Industrial Centre", "status_raw": "In Progress", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Civil Items", "sno": 15.0, "item": "Signage boards", "status_raw": "Designs finalised and The estimates and BOQ  have been submitted waiting for rate approval confirmation from CE Buildings", "contractor": "Mr. Deepak Sharma", "pending_with": "Mr. Deepak Sharma", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 17.0, "item": "HPL Sheet", "status_raw": null, "contractor": null, "pending_with": null, "remarks": null, "remarks2": null, "status_cat": "Not Recorded", "dept": null}, {"section": "Civil Items", "sno": 18.0, "item": "Godrej for Tables", "status_raw": "Revenue furniture arrived and installation is in progress", "contractor": "Mr. Prasanna Kumar", "pending_with": "Mr. Prasanna Kumar", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": null}, {"section": "Civil Items", "sno": 19.0, "item": "Main entrance", "status_raw": "Design Finalised", "contractor": "Mr. Kundan", "pending_with": "Mr. Kundan", "remarks": null, "remarks2": null, "status_cat": "Design Stage", "dept": "R&B"}, {"section": "Civil Items", "sno": 21.0, "item": "Gabian wall", "status_raw": "Work is in progress", "contractor": "DJPR", "pending_with": "DJPR", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Civil Items", "sno": 22.0, "item": "Armstrong ceilings", "status_raw": "Completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Civil Items", "sno": 23.0, "item": "Sanitary fittings (commodes, taps, basins, urinals)", "status_raw": "In Progress", "contractor": "DJPR", "pending_with": "DJPR", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Electrical Items", "sno": 1.0, "item": "Solar system installation (parking)", "status_raw": "The structural designer from Hyderabad, along with Mr. Vijay garu, visited on 31-07-2026 and held detailed discussions with the R&B department.\n\u200bThe preparation of the estimates is currently underway and is expected to take approximately one week for final submission", "contractor": "Mr. Vijay RK Solar", "pending_with": "Mr. Vijay RK Solar", "remarks": null, "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Electrical Items", "sno": 3.0, "item": "HVAC copper pipe installation", "status_raw": "Work is in Progress", "contractor": "DJPR", "pending_with": "DJPR", "remarks": "copper piping work completed in  2F, 3F and progress in 1F, GF", "remarks2": "HVAC Units for HODs/A.HODs  to be ordered.", "status_cat": "In Progress", "dept": "R&B"}, {"section": "Electrical Items", "sno": 4.0, "item": "HVAC copper pipe installation in all staff Halls/Rooms", "status_raw": "Work is in Progress", "contractor": "DJPR", "pending_with": "DJPR", "remarks": "1. 3rd floor completed\n2. 2nd floor 60% completed\n3. yet to be started in GF and 1F", "remarks2": null, "status_cat": "In Progress", "dept": "R&B"}, {"section": "Electrical Items", "sno": 5.0, "item": "Transformer installation", "status_raw": "Pending", "contractor": "APEPDCL", "pending_with": "APEPDCL", "remarks": "Transformer was delivered to site on 25.01.2026", "remarks2": "Panel boards installtions \nand cable connections and earthing \nconnections are in progress  \nand will be completed and transformer will be charged in 10 Days. (08.02.2026)", "status_cat": "Pending", "dept": "APEPDCL"}, {"section": "Electrical Items", "sno": 6.0, "item": "Audio & video systems", "status_raw": "Will be installed after completion of panelling work", "contractor": "EE, Electrical (R&B)", "pending_with": "EE, Electrical (R&B)", "remarks": "The AV System in Greviance Hall in GF  is completed. AV system for Collector's conf hall & NIC Video Conf Hall in FF are also in  contractors's scope. AV work in these Halls will be completed after completion of all the remaining works and before inaugaration.", "remarks2": "AV system in APSWAN Conf Hall in FF , 2 halls in SF, 2 Halls in TF & Training Centre in TF are not covered  in contractor's scope due to insufficient provision. The estimate for providing AV system in these 6 Halls will be  prepared and  submitted after interior design finalization.", "status_cat": "Pending (Dependent on Other Work)", "dept": "R&B"}, {"section": "Electrical Items", "sno": 7.0, "item": "Fans & Lights", "status_raw": "completed", "contractor": "DJPR", "pending_with": "NA", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Electrical Items", "sno": 10.0, "item": "Lifts (5Nos Lift well provisions)", "status_raw": "4 Nos Lifts erections were completed . For testing power was given and the testing and commissioning team will come from 30.01.2026 and will be completed by AUG 30th ,2026", "contractor": "M/s Johnson Lifts Pvt Ltd.,", "pending_with": "M/s Johnson Lifts Pvt Ltd.,", "remarks": null, "remarks2": null, "status_cat": "Completed", "dept": "R&B"}, {"section": "Electrical Items", "sno": 12.0, "item": "Providing HVAC System  to the Satff Halls/work stations to all the Department offices in all 4 floors (G+1+2+3) ( Indoor & Outdoor Power cables, Panel boards, Transformers & APEPDCL Charges )", "status_raw": null, "contractor": null, "pending_with": null, "remarks": null, "remarks2": null, "status_cat": "Not Recorded", "dept": null}, {"section": "Electrical Items", "sno": 13.0, "item": "Providing Public Address System to all the corridors & Common toilets .", "status_raw": "To be installed before inaugration", "contractor": "M/s Atluri & Co.", "pending_with": "M/s Atluri & Co.", "remarks": null, "remarks2": null, "status_cat": "Pending (Dependent on Other Work)", "dept": "R&B"}, {"section": "Electrical Items", "sno": 14.0, "item": "Providing Additional CCTV Surveillance system", "status_raw": "To be installed before inaugration", "contractor": "M/s The Advanced Comminication Systems & Services", "pending_with": "M/s The Advanced Comminication Systems & Services", "remarks": null, "remarks2": null, "status_cat": "Pending (Dependent on Other Work)", "dept": "R&B"}, {"section": "Electrical Items", "sno": 15.0, "item": "Providing facade lighting to the front elevation and external decorative poles with lighting", "status_raw": "Agency to be finalised", "contractor": "SUDA", "pending_with": "SUDA", "remarks": null, "remarks2": null, "status_cat": "Proposal / Tender Stage", "dept": "SUDA"}], "contractors": [{"work": "AC Copper piping", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 1}, {"work": "Audio & Video Systems", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 2}, {"work": "Back side of building - Park", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "sl": 3}, {"work": "Cafeteria", "contractor": null, "dept": "R&B", "phone": null, "sl": 4}, {"work": "CC Tv (75 lakhs Estimate)", "contractor": "M/S The Advanced Communication Sytems And Service", "dept": "R&B", "phone": "9618908222", "sl": 5}, {"work": "Cladding - Sand Stone/HPL/ACP", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "sl": 6}, {"work": "Cobbled Stone entrance", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "sl": 7}, {"work": "Collectorate Name Board At Gate", "contractor": "Deepak Sharma 3M", "dept": "R&B", "phone": "9971746643", "sl": 8}, {"work": "compound wall", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 9}, {"work": "conference halls (6 nos)", "contractor": "Kundan", "dept": "R&B", "phone": "7981078855", "sl": 10}, {"work": "External Additional Cabling from T/F Yard to Metering Panels", "contractor": "M/s Nandini Contractors", "dept": "R&B", "phone": "9866022859", "sl": 11}, {"work": "FACADE LIGHTING", "contractor": null, "dept": "SUDA", "phone": null, "sl": 12}, {"work": "Guard room and toilet", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 13}, {"work": "Inauguration Stone", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "sl": 14}, {"work": "Industrial centre Development", "contractor": "Kundan", "dept": "R&B", "phone": "7981078855", "sl": 15}, {"work": "Inside reception area", "contractor": "Kundan", "dept": "R&B", "phone": "7981078855", "sl": 16}, {"work": "Inside reception area", "contractor": "Vamsi", "dept": "R&B", "phone": "9989641097", "sl": 17}, {"work": "Island and nearby (front of building)", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 18}, {"work": "Lifts", "contractor": "Jhonson Company", "dept": "R&B", "phone": "9704111022", "sl": 19}, {"work": "Lights & Fans", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 20}, {"work": "open space 4 nos (between the corridors)", "contractor": null, "dept": "R&B", "phone": null, "sl": 21}, {"work": "Parking Area - Two wheelers", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 22}, {"work": "Parking Shed", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 23}, {"work": "Paver blocks", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 24}, {"work": "Public Addressing System", "contractor": "M/s Atluriu &Co", "dept": "R&B", "phone": "9290094660", "sl": 25}, {"work": "Roads going towards back side of building", "contractor": "Main Contractor", "dept": "R&B", "phone": "9292356666", "sl": 26}, {"work": "Sensors", "contractor": "Sri Gayatri Power Technologies", "dept": "R&B", "phone": "9985812953", "sl": 27}, {"work": "Sign Boards", "contractor": "Deepak Sharma 3M", "dept": "R&B", "phone": "9971746643", "sl": 28}, {"work": "Solar", "contractor": "R K Solar - Vijay", "dept": "R&B", "phone": "8919884223", "sl": 29}, {"work": "Statue in Median", "contractor": "Divili Hema Chandra", "dept": "R&B", "phone": "8309096929", "sl": 30}, {"work": "Toilets and other common ammenities", "contractor": null, "dept": "R&B", "phone": null, "sl": 31}, {"work": "Training hall", "contractor": "Kundan", "dept": "R&B", "phone": "7981078855", "sl": 32}, {"work": "Wall arts", "contractor": "Ali Architect", "dept": "R&B", "phone": "9849257860", "sl": 33}], "anomalies": ["Area Wise sheet, row for 'AC Copper piping': the 'Pending With' cell reads \"Solar panels on the main gate (possibility)\" which looks like misplaced text rather than an officer/agency name."], "dept_summary": {"R&B": {"total": 61, "completed": 19, "in_progress": 11, "proposal": 14, "not_started": 17, "pct_complete": 31}, "SUDA": {"total": 2, "completed": 0, "in_progress": 0, "proposal": 2, "not_started": 0, "pct_complete": 0}, "APEPDCL": {"total": 1, "completed": 0, "in_progress": 0, "proposal": 0, "not_started": 1, "pct_complete": 0}, "NEDCAP": {"total": 1, "completed": 0, "in_progress": 1, "proposal": 0, "not_started": 0, "pct_complete": 0}, "Not Assigned": {"total": 24, "completed": 6, "in_progress": 6, "proposal": 1, "not_started": 11, "pct_complete": 25}}, "urgent_works": [{"item": "All round land scapping and plantation", "area": "Outside", "subarea": "Parking Area - Four Wheelers", "due": "28/02/2026", "days": -161, "status": "Tracked via completion date", "source": "Area Tracker"}, {"item": "All round land scapping and plantation", "area": "Outside", "subarea": "Parking Area - Two wheelers", "due": "28/02/2026", "days": -161, "status": "Tracked via completion date", "source": "Area Tracker"}, {"item": "Median", "area": "Outside", "subarea": "Road", "due": "15-08-2026", "days": 7, "status": "In Progress", "source": "Area Tracker"}, {"item": "Open area near RTGS", "area": "Outside", "subarea": "Area near RTGS building", "due": "31/03/2026", "days": -130, "status": "Tracked via completion date", "source": "Area Tracker"}, {"item": "Land Scapping", "area": "Outside", "subarea": "Island and nearby (front of building)", "due": "31/03/2026", "days": -130, "status": "Tracked via completion date", "source": "Area Tracker"}, {"item": "Ceilings", "area": "Main Building", "subarea": "Corridors", "due": "15-08-2026", "days": 7, "status": "In Progress", "source": "Area Tracker"}, {"item": "Providing Public Address System to all the corridors & Common toilets .", "area": "Electrical Items", "subarea": null, "due": "Tied to inauguration (no fixed date)", "days": null, "status": "Pending (Dependent on Other Work)", "source": "Issues List"}, {"item": "Providing Additional CCTV Surveillance system", "area": "Electrical Items", "subarea": null, "due": "Tied to inauguration (no fixed date)", "days": null, "status": "Pending (Dependent on Other Work)", "source": "Issues List"}], "stalled_week": [{"area": "Outside", "subarea": "Main Gate", "item": "Cladding - Sand Stone/HPL/ACP", "status_raw": "In Progress", "note": "Work is in progress"}, {"area": "Outside", "subarea": "Road", "item": "BT Portion", "status_raw": "After Construction of   Median , Roads will be laid", "note": "After Construction of   Median , Roads will be laid"}, {"area": "Outside", "subarea": "Area near RTGS building", "item": "Kerb wall( To support footpath side plantation)", "status_raw": "After resumption of Plantation work.", "note": "After resumption of Plantation work."}, {"area": "Outside", "subarea": "Roads going towards back side of building", "item": "BT Portion", "status_raw": "After completion of median and silt pit", "note": "After Construction of   Median , Roads will be laid"}, {"area": "Main Building", "subarea": "Statue in Median", "item": "Statue in Median", "status_raw": "Estimate preparation is in progress", "note": "Estimate preparation is in progress"}, {"area": "Main Building", "subarea": "cafeteria", "item": "2nd floor", "status_raw": "Designs to be Finalised by Vamsi garu", "note": "Designs to be Finalised by Vamsi garu"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Audio & Video Systems", "status_raw": "AV system in Collector's conf hall & NIC Conf hall will be installed after installation of table corian sheet", "note": "AV system in Collector's conf hall & NIC Conf hall will be installed after installation of table corian sheet"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Sensors", "status_raw": "Already 5 nos censors ordered . once one circuit of AC system installed , censors will be tested and accordingly for all acs sensors will be ordered", "note": "Already 5 nos censors ordered . once one circuit of AC system installed , censors will be tested and accordingly for all acs sensors will be ordered"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "FACADE LIGHTING", "status_raw": "Agency to be finalised by SUDA", "note": "Agency to be finalised by SUDA"}], "stalled_week_dates": {"from": "29-Jul-2026", "to": "05-Aug-2026"}, "weekly_progress": [{"area": "Outside", "subarea": "Main Gate", "item": "Inauguration Stone", "track": "Civil", "from_remark": "Designs to be Finalised at entrance portico by Vamsi Garu", "to_remark": "Designs to be Finalised at entrance portico", "status_cat": "Not Started", "dept": "R&B"}, {"area": "Outside", "subarea": "Main Gate", "item": "Collectorate Name Board At Gate", "track": "Civil", "from_remark": "Designs to be Finalised by Vamsi Garu", "to_remark": "Designs to be Finalised", "status_cat": "Design Stage", "dept": "R&B"}, {"area": "Outside", "subarea": "Main Gate", "item": "Guard room", "track": "Civil", "from_remark": "Flooring and Windows to be Installed to be done by DJPR Constructions", "to_remark": "Flooring and Windows to be Installed to be done", "status_cat": "Other / Mixed", "dept": "R&B"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "Paver blocks", "track": "Civil", "from_remark": "Completed paver blocks", "to_remark": "Completed", "status_cat": "Completed", "dept": "R&B"}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "All round land scapping and plantation", "track": "Landscaping", "from_remark": "Completed paver blocks", "to_remark": "Completed", "status_cat": "Tracked via completion date", "dept": null}, {"area": "Outside", "subarea": "Parking Area - Four Wheelers", "item": "Parking Shed", "track": "Civil", "from_remark": "Design yet to be finalised", "to_remark": "Estimates will be submitted with in one week", "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"area": "Outside", "subarea": "Parking Area - Two wheelers", "item": "Parking Shed", "track": "Civil", "from_remark": "Design yet to be finalised", "to_remark": "Estimates will be submitted with in one week by Mr. Vijay garu", "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"area": "Outside", "subarea": "Road", "item": "Median", "track": "Civil", "from_remark": "Median design have been finalising", "to_remark": "P.C.C & C.C work in progress", "status_cat": "In Progress", "dept": null}, {"area": "Outside", "subarea": "Island and nearby (front of building)", "item": "Kerb wall", "track": "Civil", "from_remark": "Not yet started and will be taken up after plantation.", "to_remark": "After resumption of Plantation work.", "status_cat": "Pending (Dependent on Other Work)", "dept": "R&B"}, {"area": "Outside", "subarea": "Back side of building - road and park", "item": "BT Road", "track": "Civil", "from_remark": "Gabion Wall is in Progress and Park design to be given to Vamsi Krishna", "to_remark": "Gabion Wall is in Progress and Park design has been submitted by Mr. Vamsi Krishna garu", "status_cat": "In Progress", "dept": "R&B"}, {"area": "Outside", "subarea": "Back side of building - road and park", "item": "Park", "track": "Landscaping", "from_remark": "Gabion Wall is in Progress and Park design to be given to Vamsi Krishna", "to_remark": "Gabion Wall is in Progress and Park design has been submitted by Mr. Vamsi Krishna garu", "status_cat": "Tracked via completion date", "dept": null}, {"area": "Main Building", "subarea": "exterior main entrance", "item": "Sand stone/ HPL Sheet/ Suitable painting", "track": "Civil", "from_remark": "Regarding Entrance Elevation, Only jaali work is pending and it is in progress", "to_remark": "Regarding Entrance Elevation,sand stone  is pending for facade lighting installation and jaili work is stopped due to the load of jali to be arrived to the site.", "status_cat": "Pending", "dept": null}, {"area": "Main Building", "subarea": "exterior remaining portion", "item": "Sand stone/ HPL Sheet/ Suitable painting", "track": "Civil", "from_remark": "Sidewalls is completed on east side and on the west side 60 % work completed", "to_remark": "Sand stone on side walls is completed", "status_cat": "Completed", "dept": null}, {"area": "Main Building", "subarea": "Inside reception area", "item": "Front Entrance", "track": "Civil", "from_remark": "Wall has been constructed", "to_remark": "plasterings is done and yet to start work using Yellow sand stone", "status_cat": "Not Started", "dept": null}, {"area": "Main Building", "subarea": "open space 4 nos (between the corridors)", "item": "furniture", "track": "Civil", "from_remark": "Godrej furniture for Revenue Section has arrived to collectorate", "to_remark": "Godrej furniture for Revenue Section has arrived to collectorate and installation is in progress", "status_cat": "In Progress", "dept": null}, {"area": "Main Building", "subarea": "conference halls (6 nos)", "item": "Interior works", "track": "Civil", "from_remark": "All wall Panelling works are completed and table work completed and corian sheet laying is in progress", "to_remark": "All wall Panelling works are completed and table work completed and acoustic panelling work is in progress(80% completed)", "status_cat": "Partially Complete", "dept": null}, {"area": "Main Building", "subarea": "Training hall", "item": "Partition work", "track": "Civil", "from_remark": "Not yet started", "to_remark": "Wall panelling work is done", "status_cat": "Not Started", "dept": null}, {"area": "Main Building", "subarea": "Industrial centre", "item": "Partition work", "track": "Civil", "from_remark": "Not yet started", "to_remark": "Wall panelling work is in progress", "status_cat": "Not Started", "dept": "R&B"}, {"area": "Main Building", "subarea": "Collector and JC Chamber along with meeting hall", "item": "Interior works", "track": "Civil", "from_remark": "work is in progress", "to_remark": "In progress", "status_cat": "In Progress", "dept": null}, {"area": "Main Building", "subarea": "Corridors", "item": "Ceilings", "track": "Civil", "from_remark": "In progress", "to_remark": "Not yet started", "status_cat": "In Progress", "dept": null}, {"area": "Main Building", "subarea": "Wall arts", "item": "Wall arts", "track": "Civil", "from_remark": "Designs to be Finalised by Ali garu", "to_remark": "Designs to be Finalised by JC Sir", "status_cat": "Design Stage", "dept": "R&B"}, {"area": "Main Building", "subarea": "Sign Boards", "item": "Sign Boards", "track": "Civil", "from_remark": "Designs finalised and The estimates and BOQ  have been submitted", "to_remark": "Designs finalised and The estimates and BOQ  have been submitted waiting for rate approval confirmation from CE Buildings", "status_cat": "Proposal / Tender Stage", "dept": "R&B"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "AC Copper piping", "track": "Civil", "from_remark": "Indoor work completed, Shaft work is pending and it is about to complete in 2 weeks", "to_remark": "Indoor work completed, Shaft work is pending and it is about to complete in 2 weeks and RA Bills payment is problem for progress", "status_cat": "Partially Complete", "dept": "R&B"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "External Additional Cabling from T/F Yard to Metering Panels", "track": "Civil", "from_remark": "Cable work completed and additional panels have been ordered and will be arrived within 10 days", "to_remark": "Cable work completed and additional panels have been ordered and will be arrived", "status_cat": "Completed", "dept": "R&B"}, {"area": "Main Building", "subarea": "Electrical Works", "item": "Solar Panels over Parking", "track": "Civil", "from_remark": "No remark recorded", "to_remark": "The structural designer from Hyderabad, along with Mr. Vijay garu, visited on 31-07-2026 and held detailed discussions with the R&B department.\n\u200bThe preparation of the estimates is currently underway and is expected to take approximately one week for final submission.", "status_cat": "In Progress", "dept": "NEDCAP"}], "weekly_progress_dates": {"from": "29-Jul-2026", "to": "05-Aug-2026"}};
+
+const STATUS_STYLE = {
+  'Completed':                        {color:'var(--good)',     bg:'var(--good-bg)',     label:'Completed'},
+  'Partially Complete':               {color:'var(--good)',     bg:'var(--good-bg)',     label:'Partially Complete'},
+  'In Progress':                      {color:'var(--warning)',  bg:'var(--warning-bg)',  label:'In Progress'},
+  'Proposal / Tender Stage':          {color:'var(--serious)',  bg:'var(--serious-bg)',  label:'Proposal / Tender'},
+  'Design Stage':                     {color:'var(--serious)',  bg:'var(--serious-bg)',  label:'Design Stage'},
+  'Not Started':                      {color:'var(--critical)', bg:'var(--critical-bg)', label:'Not Started'},
+  'Pending':                          {color:'var(--critical)', bg:'var(--critical-bg)', label:'Pending'},
+  'Pending (Dependent on Other Work)':{color:'var(--critical)', bg:'var(--critical-bg)', label:'Dependent'},
+  'Tracked via completion date':      {color:'var(--text-muted)', bg:'var(--page)',       label:'Landscaping (see date)'},
+  'Not Recorded':                     {color:'var(--text-muted)', bg:'var(--page)',       label:'Not Recorded'},
+  'Other / Mixed':                    {color:'var(--text-muted)', bg:'var(--page)',       label:'Mixed'}
+};
+function styleFor(cat){ return STATUS_STYLE[cat] || {color:'var(--text-muted)', bg:'var(--page)', label:cat}; }
+
+document.getElementById('genDate').textContent = "08-Aug-2026";
+document.getElementById('genDate2').textContent = "08-Aug-2026";
+
+// ---------- Unified item list (built early — every clickable tile filters this) ----------
+const allItems = [
+  ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, _ref: it})),
+  ...DATA.issue_items.map(it=>({source:'Issues List', area: it.section, sub: null, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: null, contractor: it.contractor, dept: it.dept||null, _ref: it})),
+];
+function itemKey(it){ return `${it.source}|||${it.area||''}|||${it.item}`; }
+
+const NOTSTARTED_CATS = ['Not Started','Pending','Pending (Dependent on Other Work)','Other / Mixed','Not Recorded','Tracked via completion date'];
+const PROPOSAL_CATS = ['Proposal / Tender Stage','Design Stage'];
+const COMPLETE_CATS = ['Completed','Partially Complete'];
+
+// ---------- Focus mode: click any tile to show only the matching rows in the register ----------
+let focusPredicate = null;
+function applyFocus(pred, label){
+  focusPredicate = pred;
+  document.getElementById('focusLabel').textContent = label;
+  document.getElementById('focusBanner').classList.add('active');
+  document.querySelectorAll('.detail-section').forEach(s=>{ s.style.display='none'; });
+  if (typeof renderRegister === 'function') renderRegister();
+  const target = document.getElementById('registerSection');
+  if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function clearFocus(){
+  focusPredicate = null;
+  document.getElementById('focusBanner').classList.remove('active');
+  document.querySelectorAll('.detail-section').forEach(s=>{ s.style.display=''; });
+  ['fSearch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['fSource','fArea','fStatus','fPending','fDept'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  if (typeof renderRegister === 'function') renderRegister();
+}
+document.getElementById('focusClear').addEventListener('click', clearFocus);
+
+// ---------- KPI tiles / area chart / donut / dept grid — recomputed live from allItems ----------
+const k = DATA.kpis; // static fields only (cost_mentions etc.) — counts below are recomputed
+const STATUS_ORDER = ['Completed','Partially Complete','In Progress','Proposal / Tender Stage','Design Stage','Not Started','Pending','Pending (Dependent on Other Work)','Tracked via completion date','Not Recorded','Other / Mixed'];
+const DEPT_ORDER = ['R&B','SUDA','APEPDCL','NEDCAP','Not Assigned'];
+const donutColors = {'Completed':'#0ca30c','In Progress':'#fab219','Proposal / Design Stage':'#ec835a','Not Started / Other':'#d03b3b'};
+const DONUT_PREDICATES = {
+  'Completed': it=>COMPLETE_CATS.includes(it.status_cat),
+  'In Progress': it=>it.status_cat==='In Progress',
+  'Proposal / Design Stage': it=>PROPOSAL_CATS.includes(it.status_cat),
+  'Not Started / Other': it=>NOTSTARTED_CATS.includes(it.status_cat),
+};
+
+let AGG = null; // refreshed by computeAggregates() — recalculated live from allItems after every edit
+
+function computeAggregates(){
+  const total = allItems.length;
+  const completed_n = allItems.filter(it=>COMPLETE_CATS.includes(it.status_cat)).length;
+  const inprogress_n = allItems.filter(it=>it.status_cat==='In Progress').length;
+  const proposal_n = allItems.filter(it=>PROPOSAL_CATS.includes(it.status_cat)).length;
+  const notstarted_n = allItems.filter(it=>NOTSTARTED_CATS.includes(it.status_cat)).length;
+
+  const status_dist_overall = {};
+  allItems.forEach(it=>{ status_dist_overall[it.status_cat] = (status_dist_overall[it.status_cat]||0)+1; });
+
+  const area_summary = {};
+  allItems.forEach(it=>{
+    const a = it.area || 'Unspecified';
+    if (!area_summary[a]) area_summary[a] = {};
+    area_summary[a][it.status_cat] = (area_summary[a][it.status_cat]||0)+1;
+  });
+
+  const dept_summary = {};
+  allItems.forEach(it=>{
+    const d = it.dept || 'Not Assigned';
+    if (!dept_summary[d]) dept_summary[d] = {completed:0,in_progress:0,proposal:0,not_started:0,total:0};
+    const s = dept_summary[d];
+    s.total++;
+    if (COMPLETE_CATS.includes(it.status_cat)) s.completed++;
+    else if (it.status_cat==='In Progress') s.in_progress++;
+    else if (PROPOSAL_CATS.includes(it.status_cat)) s.proposal++;
+    else s.not_started++;
+  });
+  Object.values(dept_summary).forEach(s=>{ s.pct_complete = s.total ? Math.round(100*s.completed/s.total) : 0; });
+
+  return {
+    total_tracked: total, completed_n, inprogress_n, proposal_n, notstarted_n,
+    officers_agencies: DATA.kpis.officers_agencies, contractors_directory: DATA.kpis.contractors_directory,
+    total_area_items: DATA.kpis.total_area_items, total_issue_items: DATA.kpis.total_issue_items,
+    status_dist_overall, area_summary, dept_summary,
+  };
+}
+
+function renderKPIs(){
+  const g = AGG;
+  const kpis = [
+    {label:'Total items tracked', value:g.total_tracked, foot:g.total_area_items+' area tracker + '+g.total_issue_items+' issues', onClick:'clear', focusLabel:'All tracked items'},
+    {label:'Completed', value:g.completed_n, foot:Math.round(100*g.completed_n/g.total_tracked)+'% of tracked items', good:true, pred: it=>COMPLETE_CATS.includes(it.status_cat), focusLabel:'Completed items (incl. partially complete)'},
+    {label:'In progress', value:g.inprogress_n, foot:Math.round(100*g.inprogress_n/g.total_tracked)+'% of tracked items', pred: it=>it.status_cat==='In Progress', focusLabel:'In-progress items'},
+    {label:'Proposal / design stage', value:g.proposal_n, foot:Math.round(100*g.proposal_n/g.total_tracked)+'% awaiting approval', pred: it=>PROPOSAL_CATS.includes(it.status_cat), focusLabel:'Proposal / tender / design-stage items'},
+    {label:'Not started / pending', value:g.notstarted_n, foot:Math.round(100*g.notstarted_n/g.total_tracked)+'% of tracked items', pred: it=>NOTSTARTED_CATS.includes(it.status_cat), focusLabel:'Not started / pending items'},
+    {label:'Officers / agencies engaged', value:g.officers_agencies, foot:g.contractors_directory+' contractors in directory', pred: it=>it.pending && it.pending.toUpperCase()!=='NA', focusLabel:'Items with a named officer / agency pending'},
+  ];
+  document.getElementById('donutTitle').textContent = `Overall status distribution — all ${g.total_tracked} tracked items`;
+  document.getElementById('kpiRow').innerHTML = kpis.map((t,i)=>`
+    <div class="kpi clickable" data-kpi-idx="${i}"><div class="label">${t.label}</div><div class="value ${t.good?'good':''}">${t.value}</div><div class="foot">${t.foot}</div></div>
+  `).join('');
+  document.querySelectorAll('[data-kpi-idx]').forEach(el=>{
+    const t = kpis[+el.dataset.kpiIdx];
+    el.addEventListener('click', ()=>{
+      if (t.onClick==='clear') clearFocus();
+      else applyFocus(t.pred, t.focusLabel);
+    });
+  });
+}
+
+function renderAreaChart(){
+  let areaHtml = '';
+  for (const area in AGG.area_summary){
+    const dist = AGG.area_summary[area];
+    const total = Object.values(dist).reduce((a,b)=>a+b,0);
+    let segs = '';
+    STATUS_ORDER.forEach(cat=>{
+      if (!dist[cat]) return;
+      const pct = 100*dist[cat]/total;
+      const st = styleFor(cat);
+      segs += `<div class="seg" style="width:${pct}%; background:${st.color};" title="${cat}: ${dist[cat]}"></div>`;
+    });
+    areaHtml += `<div class="stackbar-row clickable" data-area="${area}"><div class="arealabel">${area}</div><div class="stackbar">${segs}</div><div class="total">${total}</div></div>`;
+  }
+  document.getElementById('areaChart').innerHTML = areaHtml;
+  document.querySelectorAll('#areaChart [data-area]').forEach(el=>{
+    const areaName = el.dataset.area;
+    el.addEventListener('click', ()=> applyFocus(it=>(it.area||'Unspecified')===areaName, `Area: ${areaName}`));
+  });
+
+  const legendCats = ['Completed','In Progress','Proposal / Tender Stage','Not Started'];
+  document.getElementById('statusLegend').innerHTML = legendCats.map(c=>{
+    const st = styleFor(c);
+    return `<div class="item"><span class="sw" style="background:${st.color}"></span>${st.label}</div>`;
+  }).join('') + `<div class="item"><span class="sw" style="background:var(--text-muted)"></span>Other / not recorded</div>`;
+}
+
+function renderDonut(){
+  const overall = AGG.status_dist_overall;
+  const donutGroups = {'Completed':0,'In Progress':0,'Proposal / Design Stage':0,'Not Started / Other':0};
+  for (const cat in overall){
+    if (cat==='Completed'||cat==='Partially Complete') donutGroups['Completed']+=overall[cat];
+    else if (cat==='In Progress') donutGroups['In Progress']+=overall[cat];
+    else if (cat==='Proposal / Tender Stage'||cat==='Design Stage') donutGroups['Proposal / Design Stage']+=overall[cat];
+    else donutGroups['Not Started / Other']+=overall[cat];
+  }
+  const svg = document.getElementById('donut');
+  svg.innerHTML = '';
+  const total = Object.values(donutGroups).reduce((a,b)=>a+b,0);
+  const cx=90, cy=90, r=64, rInner=40;
+  let angle = -90;
+  const ns = 'http://www.w3.org/2000/svg';
+  for (const cat in donutGroups){
+    const val = donutGroups[cat];
+    if (!val) continue;
+    const frac = val/total;
+    const sweep = frac*360;
+    const largeArc = sweep>180?1:0;
+    const a0 = angle*Math.PI/180, a1=(angle+sweep)*Math.PI/180;
+    const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+    const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    const xi0=cx+rInner*Math.cos(a1), yi0=cy+rInner*Math.sin(a1);
+    const xi1=cx+rInner*Math.cos(a0), yi1=cy+rInner*Math.sin(a0);
+    const path = document.createElementNS(ns,'path');
+    const d = `M ${x0} ${y0} A ${r} ${r} 0 ${largeArc} 1 ${x1} ${y1} L ${xi0} ${yi0} A ${rInner} ${rInner} 0 ${largeArc} 0 ${xi1} ${yi1} Z`;
+    path.setAttribute('d', d);
+    path.style.fill = donutColors[cat];
+    path.style.cursor = 'pointer';
+    path.innerHTML = `<title>${cat}: ${val} (${Math.round(frac*100)}%) — click to filter</title>`;
+    path.addEventListener('click', ()=> applyFocus(DONUT_PREDICATES[cat], `${cat} items`));
+    svg.appendChild(path);
+    angle += sweep;
+  }
+  const t = document.createElementNS(ns,'text');
+  t.setAttribute('x',cx); t.setAttribute('y',cy-2); t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','22'); t.setAttribute('font-weight','650'); t.style.fill = '#0b0b0b';
+  t.textContent = total;
+  svg.appendChild(t);
+  const t2 = document.createElementNS(ns,'text');
+  t2.setAttribute('x',cx); t2.setAttribute('y',cy+16); t2.setAttribute('text-anchor','middle');
+  t2.setAttribute('font-size','10.5'); t2.style.fill = '#898781';
+  t2.textContent = 'items';
+  svg.appendChild(t2);
+
+  document.getElementById('donutLegend').innerHTML = Object.keys(donutGroups).map(cat=>{
+    const val = donutGroups[cat];
+    const col = donutColors[cat];
+    return `<div class="clickable" data-donut-cat="${cat}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span style="width:10px;height:10px;border-radius:3px;background:${col};display:inline-block;flex-shrink:0;"></span>
+      <span style="color:var(--text-secondary);">${cat}</span>
+      <span style="margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums;">${val}</span>
+      <span style="color:var(--text-muted);width:38px;text-align:right;">${total?Math.round(100*val/total):0}%</span>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#donutLegend [data-donut-cat]').forEach(el=>{
+    const cat = el.dataset.donutCat;
+    el.addEventListener('click', ()=> applyFocus(DONUT_PREDICATES[cat], `${cat} items`));
+  });
+}
+
+function renderDeptGrid(){
+  document.getElementById('deptCount').textContent = `(${Object.keys(AGG.dept_summary).length} departments)`;
+  const extra = Object.keys(AGG.dept_summary).filter(d=>!DEPT_ORDER.includes(d));
+  const order = DEPT_ORDER.concat(extra);
+  document.getElementById('deptGrid').innerHTML = order.filter(d=>AGG.dept_summary[d]).map(d=>{
+    const s = AGG.dept_summary[d];
+    const segs = [
+      {n:s.completed, color:'var(--good)'},
+      {n:s.in_progress, color:'var(--warning)'},
+      {n:s.proposal, color:'var(--serious)'},
+      {n:s.not_started, color:'var(--critical)'},
+    ];
+    const bar = segs.filter(x=>x.n>0).map(x=>`<div class="seg" style="width:${100*x.n/s.total}%;background:${x.color};"></div>`).join('');
+    return `<div class="dept-card clickable" data-dept="${d}">
+      <div class="dname">${d}</div>
+      <div class="dtotal">${s.total} item${s.total>1?'s':''} tracked &middot; ${s.pct_complete}% complete</div>
+      <div class="dept-bar">${bar}</div>
+      <div class="dept-stats">
+        <span>✅ <b>${s.completed}</b> completed</span>
+        <span>🟡 <b>${s.in_progress}</b> in progress</span>
+        <span>🟠 <b>${s.proposal}</b> proposal/design</span>
+        <span>🔴 <b>${s.not_started}</b> not started</span>
+      </div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#deptGrid [data-dept]').forEach(el=>{
+    const d = el.dataset.dept;
+    el.addEventListener('click', ()=> applyFocus(it=>(it.dept||'Not Assigned')===d, `Executing department: ${d}`));
+  });
+}
+
+AGG = computeAggregates();
+renderKPIs();
+renderAreaChart();
+renderDonut();
+renderDeptGrid();
+
+// Focus the register on a single item, matched by source + top-level area/section + exact item name
+function focusOnItem(source, area, itemName, label){
+  applyFocus(it => it.source===source && it.area===area && it.item===itemName, label);
+}
+
+// ---------- Reports tab (Daily progress / Weekly progress / Not taken up this week) ----------
+// Daily progress recomputes live from allItems (so it reflects edits). Weekly progress and
+// "not taken up" compare the two most recent dated snapshot columns in the source sheet
+// (7 days apart) — that comparison is done in the Python build step, not in this page, so
+// those two stay snapshot-based and won't move if you edit an item here (same scope limit
+// as Officer cards / Urgent works / No-activity-this-week further down the page).
+let activeReportTab = 'daily';
+function renderReports(){
+  const body = document.getElementById('reportBody');
+  if (activeReportTab === 'daily'){
+    const items = allItems.filter(it=>it.status_cat==='In Progress');
+    document.getElementById('reportsCount').textContent = `(${items.length} in progress)`;
+    body.innerHTML = items.length ? items.map((it,i)=>{
+      const st = styleFor(it.status_cat);
+      return `<div class="report-row" data-report-idx="${i}">
+        <div class="t">${it.item} <span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span></div>
+        <div class="m">${it.area||''}${it.sub&&it.sub!==it.item?' / '+it.sub:''} &middot; ${it.source}${it.pending?' &middot; Pending with: '+it.pending:''}</div>
+      </div>`;
+    }).join('') : '<div class="section-note">No items currently in progress.</div>';
+    document.querySelectorAll('#reportBody [data-report-idx]').forEach(el=>{
+      const it = items[+el.dataset.reportIdx];
+      el.addEventListener('click', ()=> focusOnItem(it.source, it.area, it.item, `In progress: ${it.item}`));
+    });
+  } else if (activeReportTab === 'weekly'){
+    const items = DATA.weekly_progress || [];
+    const d = DATA.weekly_progress_dates || {};
+    document.getElementById('reportsCount').textContent = `(${items.length} items moved, ${d.from||''} → ${d.to||''})`;
+    body.innerHTML = items.length ? items.map((w,i)=>{
+      const st = w.status_cat ? styleFor(w.status_cat) : null;
+      return `<div class="report-row" data-weekly-idx="${i}">
+        <div class="t">${w.item}${st?` <span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span>`:''}</div>
+        <div class="m">${w.area||''}${w.subarea&&w.subarea!==w.item?' / '+w.subarea:''}</div>
+        <div class="m2"><span class="diff-old">${(w.from_remark||'').slice(0,100)}</span> → <span class="diff-new">${(w.to_remark||'').slice(0,100)}</span></div>
+      </div>`;
+    }).join('') : '<div class="section-note">No recorded movement between the two most recent snapshot dates.</div>';
+    document.querySelectorAll('#reportBody [data-weekly-idx]').forEach(el=>{
+      const w = items[+el.dataset.weeklyIdx];
+      el.addEventListener('click', ()=> focusOnItem('Area Tracker', w.area, w.item, `Weekly progress: ${w.item}`));
+    });
+  } else {
+    const items = DATA.stalled_week || [];
+    const d = DATA.stalled_week_dates || {};
+    document.getElementById('reportsCount').textContent = `(${items.length} items, ${d.from||''} → ${d.to||''})`;
+    body.innerHTML = items.length ? items.map((s,i)=>`
+      <div class="report-row" data-notaken-idx="${i}">
+        <div class="t">${s.item}</div>
+        <div class="m">${s.area||''}${s.subarea&&s.subarea!==s.item?' / '+s.subarea:''} — "${(s.status_raw||'').toString().slice(0,110)}"</div>
+      </div>
+    `).join('') : '<div class="section-note">Every tracked item had a status change in the last 7 days.</div>';
+    document.querySelectorAll('#reportBody [data-notaken-idx]').forEach(el=>{
+      const s = items[+el.dataset.notakenIdx];
+      el.addEventListener('click', ()=> focusOnItem('Area Tracker', s.area, s.item, `No activity this week: ${s.item}`));
+    });
+  }
+}
+document.querySelectorAll('.report-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.report-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeReportTab = btn.dataset.report;
+    renderReports();
+  });
+});
+renderReports();
+
+// ---------- Urgent works ----------
+const urgent = DATA.urgent_works;
+document.getElementById('urgentCount').textContent = `(${urgent.length})`;
+document.getElementById('urgentList').innerHTML = urgent.length ? urgent.map((u,i)=>{
+  let badgeText, badgeClass='';
+  if (u.days === null) { badgeText = 'INAUGURATION'; }
+  else if (u.days < 0) { badgeText = `${Math.abs(u.days)}d OVERDUE`; }
+  else { badgeText = `Due in ${u.days}d`; badgeClass='soon'; }
+  const loc = u.subarea ? `${u.area} / ${u.subarea}` : (u.area||'');
+  return `<div class="urgent-row clickable" data-urgent-idx="${i}">
+    <div class="due-badge ${badgeClass}">${badgeText}</div>
+    <div class="body">
+      <div class="t">${u.item}</div>
+      <div class="m">${loc} &middot; ${u.source} &middot; Due: ${u.due} &middot; Status: ${u.status}</div>
+    </div>
+  </div>`;
+}).join('') : '<div class="section-note">No items are currently overdue or within the 3-week horizon.</div>';
+document.querySelectorAll('[data-urgent-idx]').forEach(el=>{
+  const u = urgent[+el.dataset.urgentIdx];
+  el.addEventListener('click', ()=> focusOnItem(u.source, u.area, u.item, `Urgent: ${u.item}`));
+});
+
+// ---------- No activity this week ----------
+const stalled = DATA.stalled_week;
+const sd = DATA.stalled_week_dates;
+document.getElementById('stalledCount').textContent = `(${stalled.length})`;
+document.getElementById('stalledNote').innerHTML = `The source sheet updates on a periodic snapshot basis, not daily — the closest available weekly comparison is its two most recent status columns, <b>${sd.from}</b> and <b>${sd.to}</b> (7 days apart). Items below have <u>identical remarks</u> in both columns, meaning no field update was logged between them. Already-completed items are excluded.`;
+document.getElementById('stalledList').innerHTML = stalled.map((s,i)=>{
+  const st = styleFor(classifyForDisplay(s.status_raw));
+  return `<div class="stalled-row clickable" data-stalled-idx="${i}">
+    <div class="t">${s.item}</div>
+    <div class="m">${s.area||''}${s.subarea?' / '+s.subarea:''} — "${(s.status_raw||'').toString().slice(0,110)}"</div>
+  </div>`;
+}).join('');
+document.querySelectorAll('[data-stalled-idx]').forEach(el=>{
+  const s = stalled[+el.dataset.stalledIdx];
+  el.addEventListener('click', ()=> focusOnItem('Area Tracker', s.area, s.item, `No activity this week: ${s.item}`));
+});
+function classifyForDisplay(raw){
+  if(!raw) return 'Not Recorded';
+  const t = raw.toLowerCase();
+  if (t.includes('progress')) return 'In Progress';
+  if (t.includes('completed')) return 'Completed';
+  return 'Pending';
+}
+
+// ---------- Proposal spotlight ----------
+function renderProposalGrid(){
+  const proposalItems = allItems.filter(it => PROPOSAL_CATS.includes(it.status_cat));
+  document.getElementById('proposalCount').textContent = `(${proposalItems.length} items)`;
+  document.getElementById('proposalGrid').innerHTML = proposalItems.map((it,i)=>`
+    <div class="proposal-item clickable" data-proposal-idx="${i}">
+      <div class="t">${it.item}${it.area? ' <span class="muted" style=\"font-weight:400;\">— '+it.area+(it.sub&&it.sub!==it.item?' / '+it.sub:'')+'</span>':''}</div>
+      <div class="m">${(it.status_raw||'').slice(0,180)}</div>
+    </div>
+  `).join('');
+  document.querySelectorAll('[data-proposal-idx]').forEach(el=>{
+    const it = proposalItems[+el.dataset.proposalIdx];
+    el.addEventListener('click', ()=> focusOnItem(it.source, it.area, it.item, `Proposal / design stage: ${it.item}`));
+  });
+}
+renderProposalGrid();
+
+// ---------- Officer cards ----------
+document.getElementById('officerCount').textContent = `(${DATA.officer_cards.length})`;
+document.getElementById('officerGrid').innerHTML = DATA.officer_cards.map((c,ci)=>`
+  <div class="officer-card clickable" data-officer-idx="${ci}">
+    <div class="name">${c.officer}</div>
+    <div class="n">${c.count} item${c.count>1?'s':''} pending</div>
+    <ul>${c.items.map(it=>{
+      const st = styleFor(it.status_cat);
+      return `<li>${it.item}<span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span></li>`;
+    }).join('')}</ul>
+  </div>
+`).join('');
+document.querySelectorAll('[data-officer-idx]').forEach(el=>{
+  const c = DATA.officer_cards[+el.dataset.officerIdx];
+  const keys = new Set(c.items.map(it=>`${it.source}|||${it.area||''}|||${it.item}`));
+  el.addEventListener('click', ()=> applyFocus(it=>keys.has(itemKey(it)), `Officer / Agency: ${c.officer}`));
+});
+
+// ---------- Register table ----------
+document.getElementById('regCount').textContent = `(${allItems.length})`;
+
+function uniqueSorted(arr){ return [...new Set(arr.filter(Boolean))].sort(); }
+function fillSelect(id, values){
+  const sel = document.getElementById(id);
+  values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+fillSelect('fSource', uniqueSorted(allItems.map(i=>i.source)));
+fillSelect('fArea', uniqueSorted(allItems.map(i=>i.area)));
+fillSelect('fStatus', uniqueSorted(allItems.map(i=>i.status_cat)));
+fillSelect('fPending', uniqueSorted(allItems.map(i=>i.pending)));
+fillSelect('fDept', uniqueSorted(allItems.map(i=>i.dept)).concat(allItems.some(i=>!i.dept) ? ['Not Assigned'] : []));
+
+function renderRegister(){
+  const search = document.getElementById('fSearch').value.toLowerCase();
+  const src = document.getElementById('fSource').value;
+  const area = document.getElementById('fArea').value;
+  const status = document.getElementById('fStatus').value;
+  const pending = document.getElementById('fPending').value;
+  const dept = document.getElementById('fDept').value;
+  const filtered = allItems.filter(it=>{
+    if (src && it.source!==src) return false;
+    if (area && it.area!==area) return false;
+    if (status && it.status_cat!==status) return false;
+    if (pending && it.pending!==pending) return false;
+    if (dept && (it.dept||'Not Assigned')!==dept) return false;
+    if (search){
+      const hay = [it.item,it.area,it.sub,it.status_raw,it.pending].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (focusPredicate && !focusPredicate(it)) return false;
+    return true;
+  });
+  document.getElementById('regBody').innerHTML = filtered.map(it=>{
+    const st = styleFor(it.status_cat);
+    return `<tr>
+      <td>${it.source}</td>
+      <td>${it.area||''}${it.sub&&it.sub!==it.item?' / '+it.sub:''}</td>
+      <td class="item-name">${it.item}</td>
+      <td><span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span></td>
+      <td>${it.dept||'<span class=\"muted\">Not assigned</span>'}</td>
+      <td>${it.pending||'<span class=\"muted\">—</span>'}</td>
+      <td>${it.est||'<span class=\"muted\">—</span>'}</td>
+      <td>${it.contractor||'<span class=\"muted\">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('regCount').textContent = filtered.length===allItems.length ? `(${allItems.length})` : `(${filtered.length} of ${allItems.length})`;
+}
+['fSearch','fSource','fArea','fStatus','fPending','fDept'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderRegister);
+});
+renderRegister();
+
+// Recompute + re-render every section derived from allItems, after an edit is confirmed.
+// Scope note: Officer cards, Urgent works and No-activity-this-week stay snapshot-based
+// (they depend on date parsing / officer-name normalisation done in the Python build step,
+// not ported to this page) — an edit will not move an item in/out of those three sections.
+function recomputeDerived(){
+  AGG = computeAggregates();
+  renderKPIs();
+  renderAreaChart();
+  renderDonut();
+  renderDeptGrid();
+  renderProposalGrid();
+  renderRegister();
+  renderReports();
+}
+
+// ---------- Shared live sync (Netlify Function + Blobs backend) ----------
+// When this file is deployed on Netlify (with the accompanying netlify/functions/data.js),
+// edits made by anyone are saved centrally at /api/data and pulled by everyone else who
+// opens or refreshes the page — so "status updated by a team member" actually shows up for
+// everyone, not just in their own browser tab. If the API isn't reachable (e.g. this file is
+// just opened locally as a .html, or the function isn't deployed), everything below fails
+// silently and the dashboard falls back to its normal local-only behaviour.
+const SYNC_ENDPOINT = '/api/data';
+let syncAvailable = true;
+
+async function pullSharedEdits(showBanner){
+  try{
+    const res = await fetch(SYNC_ENDPOINT, {cache:'no-store'});
+    if (!res.ok) { syncAvailable = false; return; }
+    const overlay = await res.json();
+    syncAvailable = true;
+    let changed = false;
+    allItems.forEach(it=>{
+      const ov = overlay[itemKey(it)];
+      if (ov){
+        Object.assign(it, ov);
+        if (it._ref) Object.assign(it._ref, ov);
+        changed = true;
+      }
+    });
+    if (changed) recomputeDerived();
+    updateSyncStatus(true, Object.keys(overlay).length);
+    if (showBanner) renderEditLog();
+  } catch(e){
+    syncAvailable = false;
+    updateSyncStatus(false, 0);
+  }
+}
+
+async function pushSharedEdit(it){
+  try{
+    const payload = { [itemKey(it)]: {
+      status_cat: it.status_cat, status_raw: it.status_raw, pending: it.pending,
+      dept: it.dept, est: it.est, contractor: it.contractor, editedAt: it.editedAt,
+    }};
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){
+    syncAvailable = false;
+    updateSyncStatus(false, 0);
+  }
+}
+
+function updateSyncStatus(ok, count){
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (ok){
+    el.textContent = '🟢 Shared sync connected' + (count!==null && count!==undefined ? ` — ${count} edited item(s) stored centrally` : '');
+    el.style.color = 'var(--good)';
+  } else {
+    el.textContent = '⚪ Shared sync unavailable — edits are only saved in this browser tab (this file may be opened locally rather than via its deployed Netlify link)';
+    el.style.color = 'var(--text-muted)';
+  }
+}
+
+// Pull shared edits once on load (non-blocking — the page has already rendered from the
+// baseline data by the time this resolves, so there's no dependency on network for first paint).
+pullSharedEdits(false);
+document.getElementById('btnRefreshSync').addEventListener('click', ()=> pullSharedEdits(true));
+
+// ---------- Cost mentions ----------
+document.getElementById('costGrid').innerHTML = k.cost_mentions.map(c=>`
+  <div class="cost-card"><div class="amt">${c.amount}</div><div class="nm">${c.item}</div><div class="nt">${c.note}</div></div>
+`).join('');
+
+// ---------- Contractor directory ----------
+document.getElementById('dirCount').textContent = `(${DATA.contractors.length})`;
+document.getElementById('dirBody').innerHTML = DATA.contractors.map(c=>`
+  <tr><td>${c.sl!==undefined?c.sl:''}</td><td>${c.work}</td><td>${c.contractor||'<span class="muted">—</span>'}</td><td>${c.dept||''}</td><td>${c.phone||'<span class="muted">—</span>'}</td></tr>
+`).join('');
+
+// ---------- Data quality notes ----------
+const notes = [
+  "Status categories (Completed / In Progress / Proposal-Tender-Design / Not Started-Pending) are derived automatically from free-text status remarks using keyword matching — items with genuinely mixed status (e.g. \"Panelling completed; ceiling pending\") are classified as Partially Complete, but ambiguous phrasing may be mis-bucketed. Please have the Engineering Section spot-check before external circulation.",
+  "\"Pending With\" names are merged across spelling variants (e.g. \"Vamsi\", \"Vamsi Krishna\", \"Vamsi garu\" → Mr. Vamsi Krishna) based on the project's known personnel list.",
+  "Contractor names shown in the Area Tracker / Register are matched to the Contractor Phone Numbers sheet by work-item name similarity, not by a shared ID column — matches below a similarity threshold are left blank rather than guessed.",
+  "This sheet's structure (Issues / Area Wise / Contractor Phone Numbers tabs) is simpler than the flat multi-field register used for earlier ICC outputs in this project — it does not carry a structured financial/cost ledger; only two rupee figures appear anywhere in the free text (see Financial Mentions).",
+  ...DATA.anomalies
+];
+document.getElementById('notesBox').innerHTML = '<ul>' + notes.map(n=>`<li>${n}</li>`).join('') + '</ul>';
+
+// ---------- Edit a work item (in-page edit, preview before apply) ----------
+const STATUS_CAT_OPTIONS = Object.keys(STATUS_STYLE);
+const EDIT_DEPT_OPTIONS = ['R&B','SUDA','APEPDCL','NEDCAP'];
+const editLog = [];
+let editSelIdx = null;   // index into allItems currently loaded into the form
+let pendingChange = null; // {idx, changes:{field:{old,new,label}}}
+
+function fillNativeSelect(id, values, placeholder){
+  const sel = document.getElementById(id);
+  sel.innerHTML = (placeholder!==undefined ? `<option value="">${placeholder}</option>` : '') + values.map(v=>`<option value="${v}">${v}</option>`).join('');
+}
+fillNativeSelect('edStatusCat', STATUS_CAT_OPTIONS);
+fillNativeSelect('edDept', EDIT_DEPT_OPTIONS, '— Not assigned —');
+
+function editItemLabel(it){
+  return `[${it.source}] ${it.area? it.area+' — ':''}${it.item}`;
+}
+function renderEditPicker(filterText){
+  const q = (filterText||'').toLowerCase();
+  const sel = document.getElementById('editSelect');
+  const matches = [];
+  allItems.forEach((it,i)=>{
+    const hay = `${it.source} ${it.area||''} ${it.item}`.toLowerCase();
+    if (!q || hay.includes(q)) matches.push(i);
+  });
+  sel.innerHTML = matches.slice(0,300).map(i=>`<option value="${i}">${editItemLabel(allItems[i]).replace(/</g,'&lt;')}</option>`).join('');
+}
+renderEditPicker('');
+document.getElementById('editSearch').addEventListener('input', e=> renderEditPicker(e.target.value));
+
+document.getElementById('editSelect').addEventListener('change', e=>{
+  const idx = +e.target.value;
+  if (Number.isNaN(idx)) return;
+  editSelIdx = idx;
+  const it = allItems[idx];
+  document.getElementById('edStatusCat').value = it.status_cat || '';
+  document.getElementById('edStatusRaw').value = it.status_raw || '';
+  document.getElementById('edPending').value = it.pending || '';
+  document.getElementById('edDept').value = it.dept || '';
+  document.getElementById('edEst').value = it.est || '';
+  document.getElementById('edContractor').value = it.contractor || '';
+  document.getElementById('edEstWrap').style.display = (it.source==='Area Tracker') ? '' : 'none';
+  document.getElementById('editForm').style.display = '';
+  document.getElementById('editPreview').style.display = 'none';
+});
+
+document.getElementById('btnCancel').addEventListener('click', ()=>{
+  document.getElementById('editForm').style.display = 'none';
+  document.getElementById('editPreview').style.display = 'none';
+  editSelIdx = null;
+});
+
+const EDIT_FIELDS = [
+  {key:'status_cat', label:'Status category', inputId:'edStatusCat'},
+  {key:'status_raw', label:'Status remark', inputId:'edStatusRaw'},
+  {key:'pending', label:'Pending with / officer', inputId:'edPending'},
+  {key:'dept', label:'Executing department', inputId:'edDept'},
+  {key:'est', label:'Est. completion', inputId:'edEst'},
+  {key:'contractor', label:'Contractor', inputId:'edContractor'},
+];
+// allItems field name -> underlying _ref (DATA.area_items / DATA.issue_items) field name — a couple differ
+const REF_FIELD_MAP = {status_cat:'status_cat', status_raw:'status_raw', pending:'pending_with', dept:'dept', est:'est_completion', contractor:'contractor'};
+
+document.getElementById('btnPreview').addEventListener('click', ()=>{
+  if (editSelIdx===null) return;
+  const it = allItems[editSelIdx];
+  const changes = {};
+  EDIT_FIELDS.forEach(f=>{
+    const newVal = document.getElementById(f.inputId).value.trim();
+    const oldVal = (it[f.key]||'').toString();
+    if (newVal !== oldVal) changes[f.key] = {old: oldVal, new: newVal, label: f.label};
+  });
+  if (!Object.keys(changes).length){
+    alert('No changes made — edit a field before previewing.');
+    return;
+  }
+  pendingChange = {idx: editSelIdx, changes};
+  document.getElementById('diffTable').innerHTML = `
+    <thead><tr><th>Field</th><th>Current value</th><th>New value</th></tr></thead>
+    <tbody>${Object.values(changes).map(c=>`
+      <tr><td>${c.label}</td><td class="diff-old">${c.old || '<span class="muted">—</span>'}</td><td class="diff-new">${c.new || '<span class="muted">—</span>'}</td></tr>
+    `).join('')}</tbody>`;
+  document.getElementById('editPreview').style.display = '';
+  document.getElementById('editPreview').scrollIntoView({behavior:'smooth', block:'nearest'});
+});
+
+document.getElementById('btnDiscard').addEventListener('click', ()=>{
+  pendingChange = null;
+  document.getElementById('editPreview').style.display = 'none';
+});
+
+document.getElementById('btnConfirm').addEventListener('click', ()=>{
+  if (!pendingChange) return;
+  const it = allItems[pendingChange.idx];
+  const label = editItemLabel(it);
+  const editedAtStr = new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+  Object.entries(pendingChange.changes).forEach(([key, c])=>{
+    it[key] = c.new;
+    const refKey = REF_FIELD_MAP[key];
+    if (refKey && it._ref) it._ref[refKey] = c.new;
+  });
+  it.editedAt = editedAtStr;
+  if (it._ref) it._ref.editedAt = editedAtStr;
+  editLog.push({when: editLog.length+1, label, when_at: editedAtStr, changes: pendingChange.changes});
+  renderEditLog();
+  document.getElementById('editPreview').style.display = 'none';
+  document.getElementById('editForm').style.display = 'none';
+  pendingChange = null;
+  editSelIdx = null;
+  document.getElementById('editSelect').value = '';
+  recomputeDerived();
+  pushSharedEdit(it); // save centrally so this shows up for everyone else too, not just this tab
+});
+
+function renderEditLog(){
+  document.getElementById('editLogCount').textContent = `(${editLog.length})`;
+  if (!editLog.length){
+    document.getElementById('editLog').innerHTML = '<div class="section-note">No edits yet this session.</div>';
+    return;
+  }
+  document.getElementById('editLog').innerHTML = editLog.map(e=>`
+    <div class="edit-log-row">
+      <div class="t">#${e.when} — ${e.label} <span class="muted" style="font-weight:400;">(${e.when_at||''})</span></div>
+      <ul>${Object.values(e.changes).map(c=>`<li>${c.label}: <span class="diff-old">${c.old||'—'}</span> → <span class="diff-new">${c.new||'—'}</span></li>`).join('')}</ul>
+    </div>
+  `).join('');
+}
+
+// Formatted Excel export of the full Work Item Register, reflecting any in-page edits.
+// Built as an "Excel XML Spreadsheet" (SpreadsheetML) — a plain-text format Excel has
+// opened natively for 20+ years, so it needs no external library and works fully offline,
+// but it DOES carry real formatting (bold header, column widths, borders, row highlight,
+// wrapped text) unlike a .csv, which is why it looks right immediately with no manual
+// reformatting each time.
+function xmlEscape(val){
+  const s = (val===null||val===undefined) ? '' : String(val);
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function xlCell(val, styleId){
+  return `<Cell${styleId?` ss:StyleID="${styleId}"`:''}><Data ss:Type="String">${xmlEscape(val)}</Data></Cell>`;
+}
+document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
+  const headers = ['Source','Area / Section','Sub-area','Item','Status','Status of Work (Remark)','Executing Department','Pending With','Est. Completion','Contractor','Edited In Dashboard (Date & Time)'];
+  const colWidths = [80,110,90,240,110,240,130,120,90,140,180];
+
+  let rowsXml = '<Row ss:AutoFitHeight="0" ss:Height="26">' + headers.map(h=>xlCell(h,'sHeader')).join('') + '</Row>';
+  allItems.forEach(it=>{
+    const editedAt = it.editedAt || '';
+    const style = editedAt ? 'sBodyEdited' : 'sBody';
+    const vals = [it.source, it.area||'', it.sub||'', it.item, it.status_cat||'', it.status_raw||'', it.dept||'Not Assigned', it.pending||'', it.est||'', it.contractor||'', editedAt];
+    rowsXml += '<Row>' + vals.map(v=>xlCell(v, style)).join('') + '</Row>';
+  });
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="sHeader">
+   <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="10"/>
+   <Interior ss:Color="#1F3864" ss:Pattern="Solid"/>
+   <Alignment ss:Vertical="Center" ss:Horizontal="Left" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#0B0B0B"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="sBody">
+   <Font ss:Size="10"/>
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E1E0D9"/>
+   </Borders>
+  </Style>
+  <Style ss:ID="sBodyEdited">
+   <Font ss:Size="10"/>
+   <Interior ss:Color="#FFF3C4" ss:Pattern="Solid"/>
+   <Alignment ss:Vertical="Top" ss:WrapText="1"/>
+   <Borders>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E1E0D9"/>
+   </Borders>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Work Item Register">
+  <Table ss:DefaultColumnWidth="100" ss:DefaultRowHeight="18">
+   ${colWidths.map(w=>`<Column ss:Width="${w}"/>`).join('')}
+   ${rowsXml}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <FreezePanes/>
+   <FrozenNoSplit/>
+   <SplitHorizontal>1</SplitHorizontal>
+   <TopRowBottomPane>1</TopRowBottomPane>
+   <ActivePane>2</ActivePane>
+   <Selected/>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+
+  const blob = new Blob([xml], {type:'application/vnd.ms-excel'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ICC_Work_Item_Register_updated.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnDownload').addEventListener('click', ()=>{
+  const html = document.documentElement.outerHTML;
+  const marker = 'const DATA = ';
+  const idx = html.indexOf(marker);
+  const endIdx = html.indexOf(';\n', idx);
+  const before = html.slice(0, idx);
+  const after = html.slice(endIdx);
+  const newHtml = '<!DOCTYPE html>\n' + before + marker + JSON.stringify(DATA) + after;
+  const blob = new Blob([newHtml], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ICC_Progress_Dashboard_edited.html';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnCopyLog').addEventListener('click', ()=>{
+  if (!editLog.length){ alert('No edits to copy yet.'); return; }
+  const text = editLog.map(e=>`${e.label}\n` + Object.values(e.changes).map(c=>`  - ${c.label}: "${c.old}" -> "${c.new}"`).join('\n')).join('\n\n');
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=> alert('Edit log copied — paste it into an email or note to get the Google Sheet updated manually.'))
+      .catch(()=> prompt('Copy this edit log manually:', text));
+  } else {
+    prompt('Copy this edit log manually:', text);
+  }
+});
+</script>
+</body>
+</html>
