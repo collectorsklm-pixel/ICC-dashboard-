@@ -244,6 +244,27 @@
     .proposal-grid{ grid-template-columns:1fr; }
     .edit-grid{ grid-template-columns:1fr; }
   }
+
+  /* app-style tabs (Dashboard / Works / Menu) + bottom nav bar */
+  .app-tab{ display:none; }
+  .app-tab.active{ display:block; }
+  .wrap{ padding-bottom:96px; }
+  .bottom-nav{
+    position:fixed; left:0; right:0; bottom:0; z-index:1000;
+    display:flex; background:var(--surface-1); border-top:1px solid var(--border);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow:0 -2px 14px rgba(11,11,11,0.10);
+  }
+  .bottom-nav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-family:inherit; background:none; border:none; border-radius:10px; padding:8px 4px 6px;
+    color:var(--text-muted); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .bottom-nav-btn:hover{ background:var(--page); }
+  .bottom-nav-btn .bn-icon{ font-size:21px; line-height:1; }
+  .bottom-nav-btn .bn-label{ font-size:11px; font-weight:600; }
+  .bottom-nav-btn.active{ color:var(--series-1); }
+  .bottom-nav-btn.active .bn-icon{ transform:translateY(-1px); }
 </style>
 </head>
 <body>
@@ -257,6 +278,49 @@
     </div>
   </header>
 
+  <div class="app-tab active" id="tabDashboard">
+  <section class="reports-section" id="reportsSection">
+    <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
+    <p class="section-note">Quick review lists for a daily or once-in-3-days progress meeting — pick a tab. Rows are clickable and filter the full register further down.</p>
+    <div class="report-tabs">
+      <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
+      <button type="button" class="report-tab" data-report="weekly">📈 Weekly progress (movement this week)</button>
+      <button type="button" class="report-tab" data-report="notaken">⚠️ Not taken up this week</button>
+    </div>
+    <div id="reportBody" class="report-list"></div>
+  </section>
+
+  <section>
+    <div class="kpi-row" id="kpiRow"></div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Progress overview</h2>
+    <p class="section-note">Every tracked civil/electrical/interior line item, classified into a four-stage funnel from its free-text status remark in the source sheet. Automated classification — see Data Quality Notes at the bottom for caveats.</p>
+    <div class="chart-row">
+      <div class="card">
+        <h3>Area-wise status breakdown</h3>
+        <div id="areaChart"></div>
+        <div class="legend" id="statusLegend"></div>
+      </div>
+      <div class="card">
+        <h3 id="donutTitle">Overall status distribution</h3>
+        <div class="donut-wrap">
+          <svg id="donut" width="180" height="180" viewBox="0 0 180 180"></svg>
+          <div id="donutLegend" style="font-size:12.5px;"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">Progress by executing department <span class="count" id="deptCount"></span></h2>
+    <p class="section-note">Every tracked item resolved to its executing department (R&amp;B, SUDA, APEPDCL, NEDCAP) via the Contractor &amp; Phone Numbers directory and known project personnel. Items with no resolvable department are grouped as "Not Assigned" — see the Contractor &amp; Department Register for the detailed gap list.</p>
+    <div class="dept-grid" id="deptGrid"></div>
+  </section>
+  </div>
+
+  <div class="app-tab" id="tabWorks">
   <section class="manage-section" id="manageSection">
     <h2 class="sectiontitle">🛠️ Manage work items</h2>
     <p class="section-note">
@@ -341,7 +405,6 @@
     </div>
 
     <div class="manage-panel" id="panelEdit">
-      <p class="section-note">Search for an item, change any field, and preview the change before applying — nothing is written until you confirm.</p>
       <div class="edit-grid">
         <div class="edit-picker">
           <label for="editSearch">Search item</label>
@@ -403,7 +466,6 @@
     </div>
 
     <div class="manage-panel" id="panelDelete" style="display:none;">
-      <p class="section-note">Search for an item and confirm to remove it. This also removes it for every team member once synced — there is no undo except re-adding it.</p>
       <div class="edit-grid">
         <div class="edit-picker">
           <label for="delSearch">Search item</label>
@@ -444,51 +506,34 @@
     </p>
   </section>
 
-  <section class="reports-section" id="reportsSection">
-    <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
-    <p class="section-note">Quick review lists for a daily or once-in-3-days progress meeting — pick a tab. Rows are clickable and filter the full register further down.</p>
-    <div class="report-tabs">
-      <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
-      <button type="button" class="report-tab" data-report="weekly">📈 Weekly progress (movement this week)</button>
-      <button type="button" class="report-tab" data-report="notaken">⚠️ Not taken up this week</button>
-    </div>
-    <div id="reportBody" class="report-list"></div>
-  </section>
-
-  <section>
-    <div class="kpi-row" id="kpiRow"></div>
-  </section>
-
   <div class="focus-banner" id="focusBanner">
     <span>🔎 Showing only: <b id="focusLabel"></b></span>
     <button id="focusClear" type="button">✕ Clear filter — show full dashboard</button>
   </div>
 
-  <section class="detail-section">
-    <h2 class="sectiontitle">Progress overview</h2>
-    <p class="section-note">Every tracked civil/electrical/interior line item, classified into a four-stage funnel from its free-text status remark in the source sheet. Automated classification — see Data Quality Notes at the bottom for caveats.</p>
-    <div class="chart-row">
-      <div class="card">
-        <h3>Area-wise status breakdown</h3>
-        <div id="areaChart"></div>
-        <div class="legend" id="statusLegend"></div>
-      </div>
-      <div class="card">
-        <h3 id="donutTitle">Overall status distribution</h3>
-        <div class="donut-wrap">
-          <svg id="donut" width="180" height="180" viewBox="0 0 180 180"></svg>
-          <div id="donutLegend" style="font-size:12.5px;"></div>
-        </div>
-      </div>
+  <section id="registerSection">
+    <h2 class="sectiontitle">Work item register <span class="count" id="regCount"></span></h2>
+    <p class="section-note">Combines the Area-wise Execution Tracker and the Issues punch list into one filterable register. Every tile, card and chart segment above is clickable and filters this register.</p>
+    <div class="filters">
+      <input type="text" id="fSearch" placeholder="Search item, area, remarks…">
+      <select id="fSource"><option value="">All sources</option></select>
+      <select id="fArea"><option value="">All areas / sections</option></select>
+      <select id="fStatus"><option value="">All statuses</option></select>
+      <select id="fDept"><option value="">All departments</option></select>
+      <select id="fPending"><option value="">All pending-with</option></select>
+    </div>
+    <div class="tblwrap">
+      <table class="reg">
+        <thead><tr>
+          <th>Source</th><th>Area / Section</th><th>Item</th><th>Status</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
+        </tr></thead>
+        <tbody id="regBody"></tbody>
+      </table>
     </div>
   </section>
+  </div>
 
-  <section class="detail-section">
-    <h2 class="sectiontitle">Progress by executing department <span class="count" id="deptCount"></span></h2>
-    <p class="section-note">Every tracked item resolved to its executing department (R&amp;B, SUDA, APEPDCL, NEDCAP) via the Contractor &amp; Phone Numbers directory and known project personnel. Items with no resolvable department are grouped as "Not Assigned" — see the Contractor &amp; Department Register for the detailed gap list.</p>
-    <div class="dept-grid" id="deptGrid"></div>
-  </section>
-
+  <div class="app-tab" id="tabMenu">
   <section class="detail-section">
     <h2 class="sectiontitle">🔴 Urgent works <span class="count" id="urgentCount"></span></h2>
     <p class="section-note">Not-yet-completed items that are overdue against their own Estimated Time of Completion, due within 3 weeks (as of 08-Aug-2026), or explicitly tied to the inauguration deadline with no other schedule buffer.</p>
@@ -511,27 +556,6 @@
     <h2 class="sectiontitle">Officer / Agency-wise work allotment <span class="count" id="officerCount"></span></h2>
     <p class="section-note">Grouped by the "Pending With" field across both the Area Tracker and Issues List. Name variants (e.g. "Vamsi", "Vamsi Krishna", "Vamsi garu") are merged to one entity.</p>
     <div class="officer-grid" id="officerGrid"></div>
-  </section>
-
-  <section id="registerSection">
-    <h2 class="sectiontitle">Work item register <span class="count" id="regCount"></span></h2>
-    <p class="section-note">Combines the Area-wise Execution Tracker and the Issues punch list into one filterable register. Every tile, card and chart segment above is clickable and filters this register.</p>
-    <div class="filters">
-      <input type="text" id="fSearch" placeholder="Search item, area, remarks…">
-      <select id="fSource"><option value="">All sources</option></select>
-      <select id="fArea"><option value="">All areas / sections</option></select>
-      <select id="fStatus"><option value="">All statuses</option></select>
-      <select id="fDept"><option value="">All departments</option></select>
-      <select id="fPending"><option value="">All pending-with</option></select>
-    </div>
-    <div class="tblwrap">
-      <table class="reg">
-        <thead><tr>
-          <th>Source</th><th>Area / Section</th><th>Item</th><th>Status</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
-        </tr></thead>
-        <tbody id="regBody"></tbody>
-      </table>
-    </div>
   </section>
 
   <section class="detail-section">
@@ -558,6 +582,19 @@
   <footer>
     Rebuilt from the ICC Google Sheet in a fresh session on <span id="genDate2"></span> (the previous dashboard file from an earlier session was not available to load or reference). Status categories, officer-name merges, and contractor matches are derived programmatically — please have the Engineering Section spot-check before circulating externally.
   </footer>
+  </div>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button type="button" class="bottom-nav-btn active" data-tab="dashboard">
+      <span class="bn-icon">📊</span><span class="bn-label">Dashboard</span>
+    </button>
+    <button type="button" class="bottom-nav-btn" data-tab="works">
+      <span class="bn-icon">🛠️</span><span class="bn-label">Works</span>
+    </button>
+    <button type="button" class="bottom-nav-btn" data-tab="menu">
+      <span class="bn-icon">☰</span><span class="bn-label">Menu</span>
+    </button>
+  </nav>
 
 </div>
 
@@ -593,6 +630,24 @@ const NOTSTARTED_CATS = ['Not Started','Pending','Pending (Dependent on Other Wo
 const PROPOSAL_CATS = ['Proposal / Tender Stage','Design Stage'];
 const COMPLETE_CATS = ['Completed','Partially Complete'];
 
+// ---------- App-style tabs (Dashboard / Works / Menu) + bottom nav ----------
+const TAB_NAMES = ['dashboard','works','menu'];
+function switchTab(name, opts){
+  opts = opts || {};
+  if (!TAB_NAMES.includes(name)) return;
+  TAB_NAMES.forEach(n=>{
+    const el = document.getElementById('tab'+n.charAt(0).toUpperCase()+n.slice(1));
+    if (el) el.classList.toggle('active', n===name);
+  });
+  document.querySelectorAll('.bottom-nav-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===name);
+  });
+  if (opts.scrollTop !== false) window.scrollTo({top:0, behavior:'instant'});
+}
+document.querySelectorAll('.bottom-nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchTab(btn.dataset.tab));
+});
+
 // ---------- Focus mode: click any tile to show only the matching rows in the register ----------
 let focusPredicate = null;
 function applyFocus(pred, label){
@@ -601,6 +656,7 @@ function applyFocus(pred, label){
   document.getElementById('focusBanner').classList.add('active');
   document.querySelectorAll('.detail-section').forEach(s=>{ s.style.display='none'; });
   if (typeof renderRegister === 'function') renderRegister();
+  switchTab('works', {scrollTop:false});
   const target = document.getElementById('registerSection');
   if (target) target.scrollIntoView({behavior:'smooth', block:'start'});
 }
