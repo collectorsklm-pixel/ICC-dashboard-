@@ -290,6 +290,38 @@
   .bottom-nav-btn[data-tab="dashboard"].active{ color:var(--series-1); }
   .bottom-nav-btn[data-tab="works"].active{ color:var(--series-3); }
   .bottom-nav-btn[data-tab="menu"].active{ color:#7c5cd6; }
+  .sidebar-header{ display:none; }
+
+  /* Wide screens: same nav markup/JS, restyled as a fixed dark left sidebar
+     (admin-panel layout) instead of a bottom tab bar. Narrow/mobile screens
+     keep the original bottom bar untouched — a permanent side rail isn't a
+     good fit for a phone screen. */
+  @media (min-width: 900px){
+    body{ background:#151f33; }
+    .wrap{ margin:0 0 0 232px; max-width:1180px; padding:28px 32px 40px; background:var(--page); min-height:100vh; }
+    .bottom-nav{
+      position:fixed; left:0; top:0; bottom:0; right:auto; width:232px; z-index:1000;
+      flex-direction:column; align-items:stretch; justify-content:flex-start; gap:3px;
+      background:#182644; border-top:none; border-right:1px solid rgba(255,255,255,0.06);
+      padding:0 14px 20px; box-shadow:2px 0 18px rgba(0,0,0,0.18); overflow-y:auto;
+    }
+    .sidebar-header{
+      display:block; color:#fff; font-size:14.5px; font-weight:700; letter-spacing:.01em;
+      padding:22px 10px 16px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:12px;
+    }
+    .sidebar-header .sh-sub{ display:block; font-size:11px; font-weight:500; color:#8b9ac2; margin-top:3px; }
+    .bottom-nav-btn{
+      flex:none; flex-direction:row; justify-content:flex-start; gap:12px;
+      padding:11px 12px; border-radius:9px; color:#9fabc9;
+    }
+    .bottom-nav-btn:hover{ background:rgba(255,255,255,0.06); }
+    .bottom-nav-btn .bn-icon{ font-size:17px; }
+    .bottom-nav-btn .bn-label{ font-size:13px; }
+    .bottom-nav-btn.active{ background:rgba(255,255,255,0.12); }
+    .bottom-nav-btn[data-tab="dashboard"].active{ color:#6fb2ff; }
+    .bottom-nav-btn[data-tab="works"].active{ color:#3fd6a6; }
+    .bottom-nav-btn[data-tab="menu"].active{ color:#b39aff; }
+  }
 
   /* Menu tab: sub-menu list + detail drill-down */
   .menu-list{ display:flex; flex-direction:column; gap:10px; }
@@ -750,6 +782,7 @@
 
 
   <nav class="bottom-nav" id="bottomNav">
+    <div class="sidebar-header">ICC Srikakulam<span class="sh-sub">Progress Monitoring</span></div>
     <button type="button" class="bottom-nav-btn active" data-tab="dashboard">
       <span class="bn-icon">📊</span><span class="bn-label">Dashboard</span>
     </button>
