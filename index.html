@@ -1373,14 +1373,16 @@ function recomputeDerived(){
   }
 }
 
-// ---------- Shared live sync (Netlify Function + Blobs backend) ----------
-// When this file is deployed on Netlify (with the accompanying netlify/functions/data.js),
-// edits made by anyone are saved centrally at /api/data and pulled by everyone else who
-// opens or refreshes the page — so "status updated by a team member" actually shows up for
-// everyone, not just in their own browser tab. If the API isn't reachable (e.g. this file is
-// just opened locally as a .html, or the function isn't deployed), everything below fails
-// silently and the dashboard falls back to its normal local-only behaviour.
-const SYNC_ENDPOINT = '/api/data';
+// ---------- Shared live sync (Cloudflare Worker + Workers KV backend) ----------
+// Edits made by anyone are saved centrally and pulled by everyone else who opens or
+// refreshes the page — so "status updated by a team member" actually shows up for
+// everyone, not just in their own browser tab. This points at an absolute URL (rather
+// than a same-origin relative path) so the SAME backend is shared no matter which copy
+// of this file is being viewed — the GitHub Pages copy, the Netlify copy, or a plain
+// local .html file all sync through this one endpoint. If it isn't reachable (offline,
+// ad-blocker, etc.), everything below fails silently and the dashboard falls back to
+// its normal local-only behaviour.
+const SYNC_ENDPOINT = 'https://icc-sync-backend.collector-sklm.workers.dev/';
 let syncAvailable = true;
 
 // Normalizes whatever the server returns into {edits, additions, deletions}. Handles the
