@@ -183,6 +183,9 @@
   .report-row .t{ font-weight:600; font-size:13px; }
   .report-row .m{ font-size:11.5px; color:var(--text-secondary); margin-top:2px; }
   .report-row .m2{ font-size:11.5px; margin-top:4px; line-height:1.5; }
+  .daylog-group{ margin-bottom:14px; }
+  .daylog-date-header{ font-size:12px; font-weight:700; color:var(--text-secondary); margin:0 0 8px 2px; text-transform:uppercase; letter-spacing:.02em; }
+  .daylog-group .report-row{ margin-bottom:8px; }
 
   /* edit-a-work-item section */
   .edit-grid{ display:grid; grid-template-columns:280px 1fr; gap:20px; margin-bottom:18px; }
@@ -208,6 +211,22 @@
   table.diff-table td{ padding:7px 10px; border-bottom:1px solid var(--gridline); vertical-align:top; }
   .diff-old{ color:var(--critical); text-decoration:line-through; }
   .diff-new{ color:var(--good); font-weight:600; }
+  .edit-name-display{ font-size:15px; font-weight:650; padding:8px 0 2px; }
+  .progress-summary{ font-size:12.5px; color:var(--text-secondary); }
+  .progress-cell{ display:flex; align-items:center; gap:8px; min-width:90px; }
+  .progress-track{ flex:1; height:7px; border-radius:5px; background:var(--gridline); overflow:hidden; min-width:50px; }
+  .progress-fill{ height:100%; border-radius:5px; }
+  .progress-pct{ font-size:11.5px; font-weight:650; color:var(--text-secondary); white-space:nowrap; }
+  .worklog-card{ border-top:1px dashed var(--border); padding-top:14px; margin-top:6px; }
+  .worklog-card h4{ font-size:12.5px; font-weight:650; margin:0 0 6px; }
+  .worklog-card .section-note{ margin:0 0 8px; }
+  .payment-add-row{ display:flex; gap:10px; }
+  .payment-add-row input{ flex:1; }
+  .worklog-activity{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .worklog-activity-row{ background:var(--page); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:12px; }
+  .worklog-activity-row .d{ color:var(--text-muted); font-size:11px; font-weight:600; }
+  .worklog-empty{ font-size:12px; color:var(--text-muted); }
+
   .edit-log-wrap{ margin-bottom:18px; }
   .edit-log-wrap h3{ font-size:13px; font-weight:650; margin:0 0 10px; display:flex; gap:8px; align-items:center; }
   .edit-log{ display:flex; flex-direction:column; gap:8px; max-height:260px; overflow-y:auto; }
@@ -366,10 +385,6 @@
     <div class="manage-panel" id="panelAdd" style="display:none;">
       <div class="add-form" id="addForm">
         <div>
-          <label for="addSource">Source</label>
-          <select id="addSource"></select>
-        </div>
-        <div>
           <label for="addItem">Item name *</label>
           <input type="text" id="addItem" placeholder="Required">
         </div>
@@ -441,6 +456,11 @@
           <select id="editSelect" size="10"></select>
         </div>
         <div class="edit-form" id="editForm" style="display:none;">
+          <div class="full edit-name-wrap">
+            <label>Name of the work</label>
+            <div class="edit-name-display" id="edNameDisplay">—</div>
+          </div>
+          <div class="full progress-summary" id="edProgressSummary"></div>
           <div>
             <label for="edStatusCat">Status category</label>
             <select id="edStatusCat"></select>
@@ -458,7 +478,7 @@
             <select id="edDept"></select>
           </div>
           <div id="edEstWrap">
-            <label for="edEst">Est. completion (Area Tracker items only)</label>
+            <label for="edEst">Est. completion</label>
             <input type="text" id="edEst">
           </div>
           <div>
@@ -480,6 +500,29 @@
           <div class="edit-actions">
             <button type="button" id="btnPreview">Preview changes</button>
             <button type="button" id="btnCancel">Cancel</button>
+          </div>
+
+          <div class="worklog-card">
+            <h4>📝 Update current work details (Today)</h4>
+            <p class="section-note">Log a quick dated note against this work — this feeds the day-wise report under Menu → Reports so it can be reviewed the next day. This is separate from the field edits above and applies immediately, no preview needed.</p>
+            <textarea id="edTodayNote" rows="2" placeholder="What was done on this work today?"></textarea>
+            <div class="edit-actions">
+              <button type="button" id="btnAddTodayNote">➕ Add today's update</button>
+            </div>
+          </div>
+
+          <div class="worklog-card">
+            <h4>💰 Cumulative payment</h4>
+            <p class="section-note">Add each payment made against this work as it happens — the running total below and the work's % complete (payment so far ÷ estimated amount) update automatically.</p>
+            <div class="payment-add-row">
+              <input type="text" id="edPaymentAmount" placeholder="Amount paid today, e.g. 250000">
+              <button type="button" id="btnAddPayment">➕ Add payment entry</button>
+            </div>
+          </div>
+
+          <div class="worklog-card">
+            <h4>🕘 Recent activity on this work</h4>
+            <div id="edActivityList" class="worklog-activity"></div>
           </div>
         </div>
       </div>
@@ -541,10 +584,9 @@
 
   <section id="registerSection">
     <h2 class="sectiontitle">Work item register <span class="count" id="regCount"></span></h2>
-    <p class="section-note">Combines the Area-wise Execution Tracker and the Issues punch list into one filterable register. Every tile, card and chart segment above is clickable and filters this register.</p>
+    <p class="section-note">The Area-wise Execution Tracker — the single work register (the Issues punch list is no longer merged in, to avoid the same work being counted twice). Every tile, card and chart segment above is clickable and filters this register. "Progress %" is calculated from cumulative payment logged in Edit ÷ Estimated Amount.</p>
     <div class="filters">
       <input type="text" id="fSearch" placeholder="Search item, area, remarks…">
-      <select id="fSource"><option value="">All sources</option></select>
       <select id="fArea"><option value="">All areas / sections</option></select>
       <select id="fStatus"><option value="">All statuses</option></select>
       <select id="fDept"><option value="">All departments</option></select>
@@ -553,7 +595,7 @@
     <div class="tblwrap">
       <table class="reg">
         <thead><tr>
-          <th>Source</th><th>Area / Section</th><th>Item</th><th>Status</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
+          <th>Area / Section</th><th>Item</th><th>Status</th><th>Progress %</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
         </tr></thead>
         <tbody id="regBody"></tbody>
       </table>
@@ -565,7 +607,7 @@
   <div class="menu-list" id="menuList">
     <div class="menu-item" data-menu="reports">
       <div class="mi-icon c-blue">📋</div>
-      <div class="mi-body"><div class="mi-title">Reports</div><div class="mi-sub">Daily / weekly progress, not taken up this week</div></div>
+      <div class="mi-body"><div class="mi-title">Reports</div><div class="mi-sub">Day-wise log, daily / weekly progress, not taken up this week</div></div>
       <div class="mi-chevron">›</div>
     </div>
     <div class="menu-item" data-menu="urgent">
@@ -616,6 +658,7 @@
     <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
     <p class="section-note">Quick review lists for a daily or once-in-3-days progress meeting — pick a tab. Rows are clickable and filter the full register further down.</p>
     <div class="report-tabs">
+      <button type="button" class="report-tab" data-report="daylog">🗞️ Day-wise work log (for next-day review)</button>
       <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
       <button type="button" class="report-tab" data-report="weekly">📈 Weekly progress (movement this week)</button>
       <button type="button" class="report-tab" data-report="notaken">⚠️ Not taken up this week</button>
@@ -655,7 +698,7 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">Officer / Agency-wise work allotment <span class="count" id="officerCount"></span></h2>
-    <p class="section-note">Grouped by the "Pending With" field across both the Area Tracker and Issues List. Name variants (e.g. "Vamsi", "Vamsi Krishna", "Vamsi garu") are merged to one entity.</p>
+    <p class="section-note">Grouped by the "Pending With" field across the Area Tracker register. Name variants (e.g. "Vamsi", "Vamsi Krishna", "Vamsi garu") are merged to one entity.</p>
     <div class="officer-grid" id="officerGrid"></div>
   </section>
   </div>
@@ -663,8 +706,18 @@
   <div class="menu-detail" id="menuDetail-financial">
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
-    <h2 class="sectiontitle">Financial mentions</h2>
-    <p class="section-note">The source sheet does not maintain a structured cost/financial ledger — these are the only two cost figures found anywhere in the free-text remarks.</p>
+    <h2 class="sectiontitle">💰 Payment details report <span class="count" id="paymentReportCount"></span></h2>
+    <p class="section-note">Estimated amount, sanctioned amount, and cumulative payment logged so far (via Edit → Cumulative payment) for every work in the register — % complete is payment so far ÷ estimated amount. Only works with an estimated amount and/or a logged payment are listed.</p>
+    <div class="tblwrap" style="max-height:420px;">
+      <table class="dir" id="paymentReportTable">
+        <thead><tr><th>Area / Section</th><th>Item</th><th>Estimated</th><th>Sanctioned</th><th>Payment so far</th><th>% Complete</th></tr></thead>
+        <tbody id="paymentReportBody"></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="detail-section">
+    <h2 class="sectiontitle">Financial mentions (legacy)</h2>
+    <p class="section-note">The source sheet does not maintain a structured cost/financial ledger — these are the only two free-text cost figures found in the original remarks, kept here for reference.</p>
     <div class="cost-grid" id="costGrid"></div>
   </section>
   </div>
@@ -734,11 +787,52 @@ document.getElementById('genDate').textContent = "08-Aug-2026";
 document.getElementById('genDate2').textContent = "08-Aug-2026";
 
 // ---------- Unified item list (built early — every clickable tile filters this) ----------
+// NOTE: the Issues Tracker sheet is intentionally NOT merged in here any more — the same
+// works were effectively being listed twice (once via the Area Tracker, once via Issues),
+// inflating totals. The Area Tracker is the single source of truth for the work register.
+// DATA.issue_items is left untouched in the underlying data file in case it's ever needed
+// again, it's just excluded from allItems / all counts / all reports below.
 const allItems = [
   ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, _ref: it})),
-  ...DATA.issue_items.map(it=>({source:'Issues List', area: it.section, sub: null, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: null, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, _ref: it})),
 ];
 function itemKey(it){ return `${it.source}|||${it.area||''}|||${it.item}`; }
+
+// ---------- Day-wise work log (today's-update notes + payment ledger entries) ----------
+// Every entry is additive and dated automatically with the day it was entered — this is
+// the trail the day-wise report and the payment ledger are both built from. Synced via the
+// same shared backend as edits/additions/deletions (see pullSharedEdits / pushWorkLogEntry).
+let workLog = [];
+function todayStr(){ return new Date().toLocaleDateString('en-CA'); } // YYYY-MM-DD, locale-stable
+function makeLogId(){ return 'L' + Date.now() + Math.random().toString(36).slice(2,8); }
+
+// ---------- Amount parsing + payment-based physical progress ----------
+// Progress % is calculated from real money, not from status text: cumulative payment made
+// so far (see the payment ledger in Edit) divided by the item's Estimated Amount.
+function parseAmount(v){
+  if (v===null || v===undefined) return NaN;
+  const n = parseFloat(String(v).replace(/[^0-9.]/g,''));
+  return Number.isFinite(n) ? n : NaN;
+}
+function formatINR(n){
+  if (!Number.isFinite(n)) return '';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function paymentSoFar(it){
+  const key = itemKey(it);
+  return workLog.filter(l=>l.key===key && l.type==='payment').reduce((s,l)=> s + (parseAmount(l.amount)||0), 0);
+}
+function pctComplete(it){
+  const est = parseAmount(it.est_amount);
+  if (!(est > 0)) return null;
+  const paid = paymentSoFar(it);
+  return Math.max(0, Math.min(100, Math.round(paid/est*100)));
+}
+function progressBadge(it){
+  const pct = pctComplete(it);
+  if (pct===null) return '<span class="muted">—</span>';
+  const color = pct>=100 ? 'var(--good)' : pct>=40 ? 'var(--warning)' : 'var(--critical)';
+  return `<div class="progress-cell"><div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div><span class="progress-pct">${pct}%</span></div>`;
+}
 
 const NOTSTARTED_CATS = ['Not Started','Pending','Pending (Dependent on Other Work)','Other / Mixed','Not Recorded','Tracked via completion date'];
 const PROPOSAL_CATS = ['Proposal / Tender Stage','Design Stage'];
@@ -801,7 +895,7 @@ function clearFocus(){
   focusPredicate = null;
   document.getElementById('focusBanner').classList.remove('active');
   ['fSearch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  ['fSource','fArea','fStatus','fPending','fDept'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['fArea','fStatus','fPending','fDept'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   if (typeof renderRegister === 'function') renderRegister();
 }
 document.getElementById('focusClear').addEventListener('click', clearFocus);
@@ -861,7 +955,7 @@ function computeAggregates(){
 function renderKPIs(){
   const g = AGG;
   const kpis = [
-    {label:'Total items tracked', value:g.total_tracked, foot:g.total_area_items+' area tracker + '+g.total_issue_items+' issues', onClick:'clear', focusLabel:'All tracked items'},
+    {label:'Total items tracked', value:g.total_tracked, foot:'Area-wise Execution Tracker register', onClick:'clear', focusLabel:'All tracked items'},
     {label:'Completed', value:g.completed_n, foot:Math.round(100*g.completed_n/g.total_tracked)+'% of tracked items', good:true, pred: it=>COMPLETE_CATS.includes(it.status_cat), focusLabel:'Completed items (incl. partially complete)'},
     {label:'In progress', value:g.inprogress_n, foot:Math.round(100*g.inprogress_n/g.total_tracked)+'% of tracked items', pred: it=>it.status_cat==='In Progress', focusLabel:'In-progress items'},
     {label:'Proposal / design stage', value:g.proposal_n, foot:Math.round(100*g.proposal_n/g.total_tracked)+'% awaiting approval', pred: it=>PROPOSAL_CATS.includes(it.status_cat), focusLabel:'Proposal / tender / design-stage items'},
@@ -1020,9 +1114,41 @@ function focusOnItem(source, area, itemName, label){
 // those two stay snapshot-based and won't move if you edit an item here (same scope limit
 // as Officer cards / Urgent works / No-activity-this-week further down the page).
 let activeReportTab = 'daily';
+function dayLabel(dateStr){
+  const today = todayStr();
+  const yest = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  if (dateStr === today) return `Today (${dateStr})`;
+  if (dateStr === yest) return `Yesterday (${dateStr})`;
+  return dateStr;
+}
 function renderReports(){
   const body = document.getElementById('reportBody');
-  if (activeReportTab === 'daily'){
+  if (activeReportTab === 'daylog'){
+    // Every "Today's update" note and every payment entry logged in Edit, for the Collector
+    // to review the next morning — grouped by day, most recent day first.
+    document.getElementById('reportsCount').textContent = `(${workLog.length} logged entr${workLog.length===1?'y':'ies'})`;
+    if (!workLog.length){
+      body.innerHTML = '<div class="section-note">No day-wise updates logged yet — use "Update current work details (Today)" or "Add payment entry" in the Edit tab to start building this log. It will then show here, grouped by day, for the next-day review.</div>';
+    } else {
+      const byDate = {};
+      workLog.forEach(l=>{ (byDate[l.date] = byDate[l.date]||[]).push(l); });
+      const dates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
+      body.innerHTML = dates.map(d=>{
+        const rows = byDate[d].slice().sort((a,b)=> b.ts-a.ts).map((l,i)=>`
+          <div class="report-row" data-daylog-id="${l.id}">
+            <div class="t">${l.label}</div>
+            <div class="m">${l.area?l.area+' &middot; ':''}${l.type==='payment' ? '💰 Payment added: <b>'+formatINR(parseAmount(l.amount))+'</b>' : '📝 '+(l.note||'').replace(/</g,'&lt;')}</div>
+          </div>`).join('');
+        return `<div class="daylog-group"><div class="daylog-date-header">${dayLabel(d)} <span class="muted">(${byDate[d].length})</span></div>${rows}</div>`;
+      }).join('');
+      document.querySelectorAll('#reportBody [data-daylog-id]').forEach(el=>{
+        const l = workLog.find(x=>x.id===el.dataset.daylogId);
+        if (!l) return;
+        const it = allItems.find(x=>itemKey(x)===l.key);
+        if (it) el.addEventListener('click', ()=> focusOnItem(it.source, it.area, it.item, `Day-wise log: ${it.item}`));
+      });
+    }
+  } else if (activeReportTab === 'daily'){
     const items = allItems.filter(it=>it.status_cat==='In Progress');
     document.getElementById('reportsCount').textContent = `(${items.length} in progress)`;
     body.innerHTML = items.length ? items.map((it,i)=>{
@@ -1079,7 +1205,9 @@ document.querySelectorAll('.report-tab').forEach(btn=>{
 renderReports();
 
 // ---------- Urgent works ----------
-const urgent = DATA.urgent_works;
+// Filtered to Area Tracker only — this list was precomputed in Python from both sheets
+// before the Issues Tracker was retired as a separate source (see allItems note above).
+const urgent = DATA.urgent_works.filter(u=>u.source==='Area Tracker');
 document.getElementById('urgentCount').textContent = `(${urgent.length})`;
 document.getElementById('urgentList').innerHTML = urgent.length ? urgent.map((u,i)=>{
   let badgeText, badgeClass='';
@@ -1142,8 +1270,14 @@ function renderProposalGrid(){
 renderProposalGrid();
 
 // ---------- Officer cards ----------
-document.getElementById('officerCount').textContent = `(${DATA.officer_cards.length})`;
-document.getElementById('officerGrid').innerHTML = DATA.officer_cards.map((c,ci)=>`
+// Filtered to Area Tracker only, same reason as Urgent works above — drop any officer card
+// left with zero items once its Issues-Tracker-only entries are excluded.
+const officerCards = DATA.officer_cards
+  .map(c=>({...c, items: c.items.filter(it=>it.source==='Area Tracker')}))
+  .filter(c=>c.items.length>0)
+  .map(c=>({...c, count: c.items.length}));
+document.getElementById('officerCount').textContent = `(${officerCards.length})`;
+document.getElementById('officerGrid').innerHTML = officerCards.map((c,ci)=>`
   <div class="officer-card clickable" data-officer-idx="${ci}">
     <div class="name">${c.officer}</div>
     <div class="n">${c.count} item${c.count>1?'s':''} pending</div>
@@ -1154,7 +1288,7 @@ document.getElementById('officerGrid').innerHTML = DATA.officer_cards.map((c,ci)
   </div>
 `).join('');
 document.querySelectorAll('[data-officer-idx]').forEach(el=>{
-  const c = DATA.officer_cards[+el.dataset.officerIdx];
+  const c = officerCards[+el.dataset.officerIdx];
   const keys = new Set(c.items.map(it=>`${it.source}|||${it.area||''}|||${it.item}`));
   el.addEventListener('click', ()=> applyFocus(it=>keys.has(itemKey(it)), `Officer / Agency: ${c.officer}`));
 });
@@ -1167,7 +1301,6 @@ function fillSelect(id, values){
   const sel = document.getElementById(id);
   values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
 }
-fillSelect('fSource', uniqueSorted(allItems.map(i=>i.source)));
 fillSelect('fArea', uniqueSorted(allItems.map(i=>i.area)));
 fillSelect('fStatus', uniqueSorted(allItems.map(i=>i.status_cat)));
 fillSelect('fPending', uniqueSorted(allItems.map(i=>i.pending)));
@@ -1175,13 +1308,11 @@ fillSelect('fDept', uniqueSorted(allItems.map(i=>i.dept)).concat(allItems.some(i
 
 function renderRegister(){
   const search = document.getElementById('fSearch').value.toLowerCase();
-  const src = document.getElementById('fSource').value;
   const area = document.getElementById('fArea').value;
   const status = document.getElementById('fStatus').value;
   const pending = document.getElementById('fPending').value;
   const dept = document.getElementById('fDept').value;
   const filtered = allItems.filter(it=>{
-    if (src && it.source!==src) return false;
     if (area && it.area!==area) return false;
     if (status && it.status_cat!==status) return false;
     if (pending && it.pending!==pending) return false;
@@ -1196,10 +1327,10 @@ function renderRegister(){
   document.getElementById('regBody').innerHTML = filtered.map(it=>{
     const st = styleFor(it.status_cat);
     return `<tr>
-      <td>${it.source}</td>
       <td>${it.area||''}${it.sub&&it.sub!==it.item?' / '+it.sub:''}</td>
       <td class="item-name">${it.item}</td>
       <td><span class="status-chip" style="background:${st.bg};color:${st.color};">${st.label}</span></td>
+      <td>${progressBadge(it)}</td>
       <td>${it.dept||'<span class=\"muted\">Not assigned</span>'}</td>
       <td>${it.pending||'<span class=\"muted\">—</span>'}</td>
       <td>${it.est||'<span class=\"muted\">—</span>'}</td>
@@ -1208,7 +1339,7 @@ function renderRegister(){
   }).join('');
   document.getElementById('regCount').textContent = filtered.length===allItems.length ? `(${allItems.length})` : `(${filtered.length} of ${allItems.length})`;
 }
-['fSearch','fSource','fArea','fStatus','fPending','fDept'].forEach(id=>{
+['fSearch','fArea','fStatus','fPending','fDept'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderRegister);
 });
 renderRegister();
@@ -1226,6 +1357,7 @@ function recomputeDerived(){
   renderProposalGrid();
   renderRegister();
   renderReports();
+  if (typeof renderPaymentReport === 'function') renderPaymentReport();
   if (typeof renderEditPicker === 'function'){
     const es = document.getElementById('editSearch');
     renderEditPicker(es ? es.value : '');
@@ -1233,6 +1365,11 @@ function recomputeDerived(){
   if (typeof renderDeletePicker === 'function'){
     const ds = document.getElementById('delSearch');
     renderDeletePicker(ds ? ds.value : '');
+  }
+  // Keep the currently-open Edit form's payment/activity summary in sync too (e.g. after a
+  // payment or note synced in from another tab/device for the item that's open right now).
+  if (editSelIdx !== null && allItems[editSelIdx] && document.getElementById('editForm').style.display !== 'none'){
+    renderEditWorklogUI(allItems[editSelIdx]);
   }
 }
 
@@ -1250,11 +1387,11 @@ let syncAvailable = true;
 // OLD flat "{ [itemKey]: {fields} }" shape (what was stored before add/delete existed) by
 // treating it as pure edits, so older stored state keeps working with no migration step.
 function normalizeState(raw){
-  if (!raw || typeof raw !== 'object') return {edits:{}, additions:[], deletions:[]};
-  if (raw.edits || raw.additions || raw.deletions){
-    return {edits: raw.edits||{}, additions: raw.additions||[], deletions: raw.deletions||[]};
+  if (!raw || typeof raw !== 'object') return {edits:{}, additions:[], deletions:[], logs:[]};
+  if (raw.edits || raw.additions || raw.deletions || raw.logs){
+    return {edits: raw.edits||{}, additions: raw.additions||[], deletions: raw.deletions||[], logs: raw.logs||[]};
   }
-  return {edits: raw, additions: [], deletions: []};
+  return {edits: raw, additions: [], deletions: [], logs: []};
 }
 
 // Turns a plain "added item" object into a real allItems entry AND appends a matching
@@ -1319,8 +1456,17 @@ async function pullSharedEdits(showBanner){
       }
     });
 
+    // 4) Day-wise work log — additive only, dedup by id (never edited or deleted, so this
+    // is a straight merge of anything this tab doesn't already have).
+    if (state.logs && state.logs.length){
+      const haveIds = new Set(workLog.map(l=>l.id));
+      state.logs.forEach(l=>{
+        if (!haveIds.has(l.id)){ workLog.push(l); haveIds.add(l.id); changed = true; }
+      });
+    }
+
     if (changed) recomputeDerived();
-    const totalStored = Object.keys(state.edits).length + (state.additions||[]).length;
+    const totalStored = Object.keys(state.edits).length + (state.additions||[]).length + (state.logs||[]).length;
     updateSyncStatus(true, totalStored);
     if (showBanner) renderEditLog();
   } catch(e){
@@ -1376,6 +1522,20 @@ async function pushSharedDeletion(key){
   }
 }
 
+async function pushWorkLogEntry(entry){
+  try{
+    const payload = { logs: [ entry ] };
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){
+    syncAvailable = false;
+    updateSyncStatus(false, 0);
+  }
+}
+
 function updateSyncStatus(ok, count){
   const el = document.getElementById('syncStatus');
   if (!el) return;
@@ -1397,6 +1557,26 @@ document.getElementById('btnRefreshSync').addEventListener('click', ()=> pullSha
 document.getElementById('costGrid').innerHTML = k.cost_mentions.map(c=>`
   <div class="cost-card"><div class="amt">${c.amount}</div><div class="nm">${c.item}</div><div class="nt">${c.note}</div></div>
 `).join('');
+
+// ---------- Payment details report (Menu → Financial Reports) ----------
+// Every work with an estimated amount, a sanctioned amount, or a logged payment — kept in
+// sync with the same cumulative-payment ledger the Edit tab writes to.
+function renderPaymentReport(){
+  const rows = allItems.filter(it=> parseAmount(it.est_amount)>0 || parseAmount(it.sanctioned_amount)>0 || paymentSoFar(it)>0);
+  document.getElementById('paymentReportCount').textContent = `(${rows.length} of ${allItems.length} works)`;
+  document.getElementById('paymentReportBody').innerHTML = rows.length ? rows.map(it=>{
+    const paid = paymentSoFar(it);
+    return `<tr>
+      <td>${it.area||''}</td>
+      <td>${it.item}</td>
+      <td>${it.est_amount ? formatINR(parseAmount(it.est_amount)) : '<span class="muted">—</span>'}</td>
+      <td>${it.sanctioned_amount ? formatINR(parseAmount(it.sanctioned_amount)) : '<span class="muted">—</span>'}</td>
+      <td>${paid>0 ? formatINR(paid) : '<span class="muted">—</span>'}</td>
+      <td>${progressBadge(it)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6"><span class="muted">No works have an estimated/sanctioned amount or logged payment yet.</span></td></tr>';
+}
+renderPaymentReport();
 
 // ---------- Contractor directory ----------
 document.getElementById('dirCount').textContent = `(${DATA.contractors.length})`;
@@ -1441,7 +1621,7 @@ document.querySelectorAll('.manage-tab').forEach(btn=>{
 });
 
 function editItemLabel(it){
-  return `[${it.source}] ${it.area? it.area+' — ':''}${it.item}`;
+  return `${it.area? it.area+' — ':''}${it.item}`;
 }
 function renderEditPicker(filterText){
   const q = (filterText||'').toLowerCase();
@@ -1455,6 +1635,30 @@ function renderEditPicker(filterText){
 }
 renderEditPicker('');
 document.getElementById('editSearch').addEventListener('input', e=> renderEditPicker(e.target.value));
+
+// Fills the "Name of the work", payment-progress summary, and recent-activity list for
+// whichever item is currently loaded into the Edit form. Called on selection, after adding
+// a today's-update note or payment entry, and after a shared-sync pull that touches this item.
+function renderEditWorklogUI(it){
+  document.getElementById('edNameDisplay').textContent = editItemLabel(it);
+  const est = parseAmount(it.est_amount);
+  const paid = paymentSoFar(it);
+  const pct = pctComplete(it);
+  if (est > 0){
+    document.getElementById('edProgressSummary').innerHTML =
+      `Payment so far: <b>${formatINR(paid)}</b> of <b>${formatINR(est)}</b> estimated — ${progressBadge(it)}`;
+  } else {
+    document.getElementById('edProgressSummary').innerHTML =
+      paid > 0
+        ? `Payment so far: <b>${formatINR(paid)}</b> — add an Estimated amount above to calculate % complete.`
+        : `<span class="muted">Add an Estimated amount and log payments below to calculate % complete.</span>`;
+  }
+  const key = itemKey(it);
+  const entries = workLog.filter(l=>l.key===key).sort((a,b)=> b.ts - a.ts);
+  document.getElementById('edActivityList').innerHTML = entries.length
+    ? entries.map(l=>`<div class="worklog-activity-row"><span class="d">${l.date}</span> — ${l.type==='payment' ? `💰 Payment added: <b>${formatINR(parseAmount(l.amount))}</b>` : `📝 ${(l.note||'').replace(/</g,'&lt;')}`}</div>`).join('')
+    : '<div class="worklog-empty">No dated updates logged for this work yet.</div>';
+}
 
 document.getElementById('editSelect').addEventListener('change', e=>{
   const idx = +e.target.value;
@@ -1471,8 +1675,38 @@ document.getElementById('editSelect').addEventListener('change', e=>{
   document.getElementById('edSanctionedAmount').value = it.sanctioned_amount || '';
   document.getElementById('edSanctionSource').value = it.sanction_source || '';
   document.getElementById('edEstWrap').style.display = (it.source==='Area Tracker') ? '' : 'none';
+  document.getElementById('edPaymentAmount').value = '';
+  document.getElementById('edTodayNote').value = '';
+  renderEditWorklogUI(it);
   document.getElementById('editForm').style.display = '';
   document.getElementById('editPreview').style.display = 'none';
+});
+
+document.getElementById('btnAddTodayNote').addEventListener('click', ()=>{
+  if (editSelIdx===null) return;
+  const note = document.getElementById('edTodayNote').value.trim();
+  if (!note){ alert('Type a note before adding it.'); return; }
+  const it = allItems[editSelIdx];
+  const entry = { id: makeLogId(), key: itemKey(it), label: editItemLabel(it), area: it.area||'', date: todayStr(), ts: Date.now(), type:'note', note };
+  workLog.push(entry);
+  document.getElementById('edTodayNote').value = '';
+  renderEditWorklogUI(it);
+  recomputeDerived();
+  pushWorkLogEntry(entry);
+});
+
+document.getElementById('btnAddPayment').addEventListener('click', ()=>{
+  if (editSelIdx===null) return;
+  const raw = document.getElementById('edPaymentAmount').value.trim();
+  const amount = parseAmount(raw);
+  if (!(amount > 0)){ alert('Enter a valid payment amount greater than zero.'); return; }
+  const it = allItems[editSelIdx];
+  const entry = { id: makeLogId(), key: itemKey(it), label: editItemLabel(it), area: it.area||'', date: todayStr(), ts: Date.now(), type:'payment', amount };
+  workLog.push(entry);
+  document.getElementById('edPaymentAmount').value = '';
+  renderEditWorklogUI(it);
+  recomputeDerived();
+  pushWorkLogEntry(entry);
 });
 
 document.getElementById('btnCancel').addEventListener('click', ()=>{
@@ -1547,10 +1781,10 @@ document.getElementById('btnConfirm').addEventListener('click', ()=>{
 });
 
 // ---------- Add a new work item ----------
-fillNativeSelect('addSource', ['Area Tracker','Issues List']);
+// Source is always 'Area Tracker' now — the Issues Tracker sheet is no longer a separate
+// source works get added under (see the allItems note above), so there's nothing to pick.
 fillNativeSelect('addStatusCat', STATUS_CAT_OPTIONS, '— Select —');
 fillNativeSelect('addDept', EDIT_DEPT_OPTIONS, '— Not assigned —');
-document.getElementById('addSource').value = 'Area Tracker';
 
 const ADD_FIELDS = [
   {key:'item', label:'Item name', inputId:'addItem'},
@@ -1570,13 +1804,12 @@ let pendingAdd = null;
 
 function resetAddForm(){
   ADD_FIELDS.forEach(f=>{ const el=document.getElementById(f.inputId); if (el) el.value=''; });
-  document.getElementById('addSource').value = 'Area Tracker';
 }
 
 document.getElementById('btnAddPreview').addEventListener('click', ()=>{
   const itemName = document.getElementById('addItem').value.trim();
   if (!itemName){ alert('Item name is required.'); return; }
-  const source = document.getElementById('addSource').value || 'Area Tracker';
+  const source = 'Area Tracker';
   const draft = { source };
   ADD_FIELDS.forEach(f=>{
     if (f.key==='item') return;
@@ -1720,14 +1953,16 @@ function xlCell(val, styleId){
   return `<Cell${styleId?` ss:StyleID="${styleId}"`:''}><Data ss:Type="String">${xmlEscape(val)}</Data></Cell>`;
 }
 document.getElementById('btnDownloadCsv').addEventListener('click', ()=>{
-  const headers = ['Source','Area / Section','Sub-area','Item','Status','Status of Work (Remark)','Executing Department','Pending With','Est. Completion','Estimated Amount','Sanctioned Amount','Source of Sanctioned Amount','Contractor','Edited In Dashboard (Date & Time)'];
-  const colWidths = [80,110,90,240,110,240,130,120,90,120,120,160,140,180];
+  const headers = ['Source','Area / Section','Sub-area','Item','Status','Status of Work (Remark)','Executing Department','Pending With','Est. Completion','Estimated Amount','Sanctioned Amount','Source of Sanctioned Amount','Payment So Far','% Complete','Contractor','Edited In Dashboard (Date & Time)'];
+  const colWidths = [80,110,90,240,110,240,130,120,90,120,120,160,110,90,140,180];
 
   let rowsXml = '<Row ss:AutoFitHeight="0" ss:Height="26">' + headers.map(h=>xlCell(h,'sHeader')).join('') + '</Row>';
   allItems.forEach(it=>{
     const editedAt = it.editedAt || '';
     const style = editedAt ? 'sBodyEdited' : 'sBody';
-    const vals = [it.source, it.area||'', it.sub||'', it.item, it.status_cat||'', it.status_raw||'', it.dept||'Not Assigned', it.pending||'', it.est||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'', it.contractor||'', editedAt];
+    const pct = pctComplete(it);
+    const paid = paymentSoFar(it);
+    const vals = [it.source, it.area||'', it.sub||'', it.item, it.status_cat||'', it.status_raw||'', it.dept||'Not Assigned', it.pending||'', it.est||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'', paid>0?formatINR(paid):'', pct===null?'':pct+'%', it.contractor||'', editedAt];
     rowsXml += '<Row>' + vals.map(v=>xlCell(v, style)).join('') + '</Row>';
   });
 
@@ -1799,11 +2034,16 @@ document.getElementById('menuActionPdf').addEventListener('click', ()=>{
   doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text('Generated ' + new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) + '  ·  ' + allItems.length + ' items', 40, 48);
-  const headers = [['Source','Area / Section','Item','Status','Department','Pending With','Est. Completion','Contractor','Est. Amount','Sanctioned Amount','Sanction Source']];
-  const rows = allItems.map(it=>[
-    it.source, it.area||'', it.item, it.status_cat||'', it.dept||'Not Assigned', it.pending||'',
-    it.est||'', it.contractor||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'',
-  ]);
+  const headers = [['Source','Area / Section','Item','Status','Department','Pending With','Est. Completion','Contractor','Est. Amount','Sanctioned Amount','Sanction Source','Payment So Far','% Complete']];
+  const rows = allItems.map(it=>{
+    const pct = pctComplete(it);
+    const paid = paymentSoFar(it);
+    return [
+      it.source, it.area||'', it.item, it.status_cat||'', it.dept||'Not Assigned', it.pending||'',
+      it.est||'', it.contractor||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'',
+      paid>0?formatINR(paid):'', pct===null?'':pct+'%',
+    ];
+  });
   doc.autoTable({
     head: headers, body: rows, startY: 60,
     styles:{ fontSize:7, cellPadding:3, overflow:'linebreak' },
