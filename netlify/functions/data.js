@@ -18,19 +18,20 @@ function getBlobStore() {
   return getStore("icc-dashboard");
 }
 
-// Normalizes whatever is currently stored into { edits, additions, deletions }.
+// Normalizes whatever is currently stored into { edits, additions, deletions, logs }.
 // Handles the OLD flat "{ [itemKey]: {fields} }" shape (what this endpoint stored
 // before add/delete existed) by treating it as pure edits — no migration needed.
 function normalize(raw) {
-  if (!raw || typeof raw !== "object") return { edits: {}, additions: [], deletions: [] };
-  if (raw.edits || raw.additions || raw.deletions) {
+  if (!raw || typeof raw !== "object") return { edits: {}, additions: [], deletions: [], logs: [] };
+  if (raw.edits || raw.additions || raw.deletions || raw.logs) {
     return {
       edits: raw.edits || {},
       additions: Array.isArray(raw.additions) ? raw.additions : [],
       deletions: Array.isArray(raw.deletions) ? raw.deletions : [],
+      logs: Array.isArray(raw.logs) ? raw.logs : [],
     };
   }
-  return { edits: raw, additions: [], deletions: [] };
+  return { edits: raw, additions: [], deletions: [], logs: [] };
 }
 
 function itemKeyOf(it) {
@@ -54,7 +55,7 @@ exports.handler = async (event) => {
       const rawIncoming = JSON.parse(event.body || "{}");
       // Backward-compat: a stale cached page (old service-worker app-shell copy) might still
       // POST the old flat "{ [itemKey]: {fields} }" shape. Detect and treat it as pure edits.
-      const incoming = (rawIncoming.edits || rawIncoming.additions || rawIncoming.deletions)
+      const incoming = (rawIncoming.edits || rawIncoming.additions || rawIncoming.deletions || rawIncoming.logs)
         ? rawIncoming
         : { edits: rawIncoming };
       const current = normalize(await store.get("state", { type: "json" }));
@@ -71,9 +72,16 @@ exports.handler = async (event) => {
       // Merge edits (simple spread — same behaviour as before).
       const edits = { ...current.edits, ...(incoming.edits || {}) };
 
-      // Purge anything that's now deleted from both edits and additions, so a
-      // delete cleanly removes the item from shared state rather than leaving
-      // stale data that could resurrect it on a later pull.
+      // Merge day-wise work-log entries (today's-update notes + payment ledger entries).
+      // Purely additive and never edited/deleted — dedup by the entry's own id, later
+      // occurrence wins (identical content in practice, this just avoids duplicates from
+      // a retried POST).
+      const logsMap = new Map(current.logs.map((l) => [l.id, l]));
+      (incoming.logs || []).forEach((l) => { if (l && l.id) logsMap.set(l.id, l); });
+
+      // Purge anything that's now deleted from edits and additions (but NOT from logs —
+      // the day-wise log is a historical audit trail; a deleted work's past updates/payments
+      // stay on the record even after the item itself is removed from the live register).
       deletionSet.forEach((key) => {
         delete edits[key];
         additionsMap.delete(key);
@@ -83,6 +91,7 @@ exports.handler = async (event) => {
         edits,
         additions: Array.from(additionsMap.values()),
         deletions: Array.from(deletionSet),
+        logs: Array.from(logsMap.values()),
       };
 
       await store.setJSON("state", merged);
@@ -94,6 +103,7 @@ exports.handler = async (event) => {
           totalEditedItems: Object.keys(merged.edits).length,
           totalAdditions: merged.additions.length,
           totalDeletions: merged.deletions.length,
+          totalLogs: merged.logs.length,
         }),
       };
     }
