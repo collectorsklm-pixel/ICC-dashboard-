@@ -83,6 +83,11 @@
   .activity-chart-svg circle{ cursor:pointer; }
   .activity-empty{ font-size:12.5px; color:var(--text-muted); padding:24px 4px; text-align:center; }
 
+  /* contractor-wise activity today */
+  .contractor-label{ width:190px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .contractor-chart-list{ max-height:520px; overflow-y:auto; padding-right:4px; }
+  .contractor-chart-list .stackbar-row{ margin-bottom:2px; }
+
   /* department-wise progress */
   .dept-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:12px; }
   .dept-card{ background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
@@ -397,6 +402,18 @@
         <div class="activity-today-label">not-yet-completed work(s) with a logged update <b>today</b></div>
       </div>
       <div id="activityChart"></div>
+    </div>
+  </section>
+
+  <section class="detail-section">
+    <h2 class="sectiontitle">🧑‍🔧 Contractor-wise activity today <span class="count" id="contractorActivityCount"></span></h2>
+    <p class="section-note">Every not-yet-completed work, grouped by contractor. Green share of each bar is work with a "Today's update" note or payment logged today; red is work with no update logged today. Contractors with the most no-update work are listed first — the quickest way to see who's actually on site today and who isn't. Click a row to filter the register to that contractor.</p>
+    <div class="card">
+      <div id="contractorActivityChart" class="contractor-chart-list"></div>
+      <div class="legend">
+        <div class="item"><span class="sw" style="background:var(--good)"></span>Logged update today</div>
+        <div class="item"><span class="sw" style="background:var(--critical)"></span>No update logged today</div>
+      </div>
     </div>
   </section>
 
@@ -1200,6 +1217,60 @@ function renderActivityChart(){
   </svg>`;
 }
 
+// ---------- Dashboard: contractor-wise activity today ----------
+// Same "logged today = active" logic as the site-activity chart above, but broken out
+// per contractor so it directly answers "who's actually working today, who isn't" —
+// only not-yet-completed works count (a contractor's already-finished works don't need
+// a daily update). Contractors are grouped by the raw Contractor field as entered in the
+// source register; name-variant merging (as done for the officer directory) isn't applied
+// here, so slightly different spellings of the same contractor will list separately until
+// that's cleaned up in the source data.
+function contractorActivitySummary(){
+  const today = todayStr();
+  const map = new Map();
+  allItems.forEach(it=>{
+    if (COMPLETE_CATS.includes(it.status_cat)) return;
+    const name = (it.contractor||'').trim() || 'Not Assigned';
+    const key = itemKey(it);
+    const hasToday = workLog.some(l=>l.key===key && l.date===today);
+    if (!map.has(name)) map.set(name, {name, working:0, notToday:0, total:0});
+    const rec = map.get(name);
+    rec.total++;
+    if (hasToday) rec.working++; else rec.notToday++;
+  });
+  return Array.from(map.values()).sort((a,b)=> (b.notToday - a.notToday) || (b.total - a.total) || a.name.localeCompare(b.name));
+}
+function renderContractorActivity(){
+  const rows = contractorActivitySummary();
+  const wrap = document.getElementById('contractorActivityChart');
+  if (!wrap) return;
+  const countEl = document.getElementById('contractorActivityCount');
+  if (countEl) countEl.textContent = `(${rows.length} contractor${rows.length===1?'':'s'} with active work)`;
+  if (!rows.length){
+    wrap.innerHTML = '<div class="section-note">No not-yet-completed works with a contractor on record.</div>';
+    return;
+  }
+  wrap.innerHTML = rows.map(r=>{
+    const workingPct = r.total ? 100*r.working/r.total : 0;
+    const notPct = 100 - workingPct;
+    return `<div class="stackbar-row clickable" data-contractor="${encodeURIComponent(r.name)}">
+      <div class="arealabel contractor-label" title="${r.name}">${r.name}</div>
+      <div class="stackbar">
+        ${r.working ? `<div class="seg" style="width:${workingPct}%;background:var(--good);" title="${r.name}: ${r.working} work(s) with a logged update today"></div>` : ''}
+        ${r.notToday ? `<div class="seg" style="width:${notPct}%;background:var(--critical);" title="${r.name}: ${r.notToday} work(s) with no update logged today"></div>` : ''}
+      </div>
+      <div class="total">${r.total}</div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#contractorActivityChart [data-contractor]').forEach(el=>{
+    const name = decodeURIComponent(el.dataset.contractor);
+    el.addEventListener('click', ()=> applyFocus(
+      it => ((it.contractor||'').trim() || 'Not Assigned') === name,
+      `Contractor: ${name}`
+    ));
+  });
+}
+
 function renderDeptGrid(){
   document.getElementById('deptCount').textContent = `(${Object.keys(AGG.dept_summary).length} departments)`;
   const extra = Object.keys(AGG.dept_summary).filter(d=>!DEPT_ORDER.includes(d));
@@ -1236,6 +1307,7 @@ renderKPIs();
 renderAreaChart();
 renderDonut();
 renderActivityChart();
+renderContractorActivity();
 renderDeptGrid();
 
 // Focus the register on a single item, matched by source + top-level area/section + exact item name
@@ -1490,6 +1562,7 @@ function recomputeDerived(){
   renderAreaChart();
   renderDonut();
   if (typeof renderActivityChart === 'function') renderActivityChart();
+  if (typeof renderContractorActivity === 'function') renderContractorActivity();
   renderDeptGrid();
   renderProposalGrid();
   renderRegister();
