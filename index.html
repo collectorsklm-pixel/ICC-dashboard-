@@ -410,7 +410,7 @@
     <h1>Integrated Collectorate Complex (ICC), Srikakulam — Progress Monitoring Dashboard</h1>
     <div class="sub">
       Collectorate Srikakulam &middot; Source: ICC Google Sheet (Issues / Area Wise / Contractor Phone Numbers tabs) &middot;
-      Generated <b id="genDate"></b> &middot; Latest field update captured in source: <b>05-Aug-2026</b>
+      Generated <b id="genDate"></b> &middot; Latest field update captured in source: <b id="latestSnapDate"></b>
     </div>
   </header>
 
@@ -897,7 +897,7 @@
   </div>
 
   <footer>
-    Rebuilt from the ICC Google Sheet in a fresh session on <span id="genDate2"></span> (the previous dashboard file from an earlier session was not available to load or reference). Status categories, officer-name merges, and contractor matches are derived programmatically — please have the Engineering Section spot-check before circulating externally.
+    Data refreshed from the ICC Google Sheet, the latest pending-works Excel, and the circulated meeting agenda on <span id="genDate2"></span>. Status categories, officer-name merges, and contractor matches are derived programmatically — please have the Engineering Section spot-check before circulating externally.
   </footer>
   </div>
 
@@ -937,8 +937,9 @@ const STATUS_STYLE = {
 };
 function styleFor(cat){ return STATUS_STYLE[cat] || {color:'var(--text-muted)', bg:'var(--page)', label:cat}; }
 
-document.getElementById('genDate').textContent = "08-Aug-2026";
-document.getElementById('genDate2').textContent = "08-Aug-2026";
+document.getElementById('genDate').textContent = DATA.kpis.data_asof || "08-Aug-2026";
+document.getElementById('genDate2').textContent = DATA.kpis.data_asof || "08-Aug-2026";
+document.getElementById('latestSnapDate').textContent = DATA.kpis.sheet_last_snapshot || "05-Aug-2026";
 
 // ---------- Unified item list (built early — every clickable tile filters this) ----------
 // NOTE: the Issues Tracker sheet is intentionally NOT merged in here any more — the same
