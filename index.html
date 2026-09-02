@@ -543,7 +543,6 @@
 
   <section class="detail-section">
     <h2 class="sectiontitle">📈 Daily site activity</h2>
-    <p class="section-note">Not-yet-completed works with a "Today's update" note or a payment entry logged that day (via Works → Edit) — a work with no logged entry on a given day is treated as not worked on at the site that day. Open this dashboard any morning for an at-a-glance count of what was actually active on site.</p>
     <div class="card">
       <div class="activity-today-row">
         <div class="activity-today-big" id="activityTodayBig">0</div>
@@ -555,7 +554,6 @@
 
   <section class="detail-section">
     <h2 class="sectiontitle">🧑‍🔧 Contractor-wise activity today <span class="count" id="contractorActivityCount"></span></h2>
-    <p class="section-note">Every not-yet-completed work, grouped by contractor. Green share of each bar is work with a "Today's update" note or payment logged today; red is work with no update logged today. Contractors with the most no-update work are listed first — the quickest way to see who's actually on site today and who isn't. Click a row to filter the register to that contractor.</p>
     <div class="card">
       <div id="contractorActivityChart" class="contractor-chart-list"></div>
       <div class="legend">
@@ -567,7 +565,6 @@
 
   <section class="detail-section">
     <h2 class="sectiontitle">Progress overview</h2>
-    <p class="section-note">Every tracked civil/electrical/interior line item, classified into a four-stage funnel from its free-text status remark in the source sheet. Automated classification — see Data Quality Notes at the bottom for caveats.</p>
     <div class="chart-row">
       <div class="card">
         <h3>Area-wise status breakdown</h3>
@@ -586,7 +583,6 @@
 
   <section class="detail-section">
     <h2 class="sectiontitle">Progress by executing department <span class="count" id="deptCount"></span></h2>
-    <p class="section-note">Every tracked item resolved to its executing department (R&amp;B, SUDA, APEPDCL, NEDCAP) via the Contractor &amp; Phone Numbers directory and known project personnel. Items with no resolvable department are grouped as "Not Assigned" — see the Contractor &amp; Department Register for the detailed gap list.</p>
     <div class="dept-grid" id="deptGrid"></div>
   </section>
   </div>
@@ -594,12 +590,6 @@
   <div class="app-tab" id="tabWorks">
   <section class="manage-section" id="manageSection">
     <h2 class="sectiontitle">🛠️ Manage work items</h2>
-    <p class="section-note">
-      Add a brand-new work item, edit an existing one, or remove one — pick a tab below. Every change is previewed before it applies,
-      and once confirmed it updates the charts, department cards and register live, and syncs centrally so every team member sees it
-      (see sync status at the bottom of this section). Use <b>Download updated dashboard</b> to save a new file with your edits baked in,
-      or <b>Copy edit log</b> to relay changes for a manual update of the source Google Sheet — this dashboard has no direct write access to Google Sheets.
-    </p>
     <div class="manage-tabs">
       <button type="button" class="manage-tab" data-manage="add">➕ Add new work</button>
       <button type="button" class="manage-tab active" data-manage="edit">✏️ Edit work</button>
@@ -736,7 +726,6 @@
 
           <div class="worklog-card">
             <h4>📝 Update current work details (Today)</h4>
-            <p class="section-note">Log a quick dated note against this work — this feeds the day-wise report under Menu → Reports so it can be reviewed the next day. This is separate from the field edits above and applies immediately, no preview needed.</p>
             <textarea id="edTodayNote" rows="2" placeholder="What was done on this work today?"></textarea>
             <div class="edit-actions">
               <button type="button" id="btnAddTodayNote">➕ Add today's update</button>
@@ -745,7 +734,6 @@
 
           <div class="worklog-card">
             <h4>💰 Cumulative payment</h4>
-            <p class="section-note">Add each payment made against this work as it happens — the running total below and the work's % complete (payment so far ÷ estimated amount) update automatically.</p>
             <div class="payment-add-row">
               <input type="text" id="edPaymentAmount" placeholder="Amount paid today, e.g. 250000">
               <button type="button" id="btnAddPayment">➕ Add payment entry</button>
@@ -797,16 +785,6 @@
       <button type="button" id="btnDownload">⬇ Download updated dashboard (.html)</button>
       <button type="button" id="btnCopyLog">📋 Copy edit log</button>
     </div>
-    <p class="section-note" style="margin-top:8px;">
-      <b>Easiest way to get your edits into the real Google Sheet:</b> click <b>Download formatted Excel</b> —
-      it saves the full work-item list (with any edits you've made) as a ready-formatted .xls file: bold header,
-      sized columns, and any row you've edited highlighted with the exact date &amp; time of the edit — no manual
-      reformatting needed when you open it. In Google Sheets you can also bring it in via
-      <b>File → Import → Upload</b>, choosing "Insert new sheet" or "Replace current sheet" for the relevant tab.
-      This needs no Google sign-in and nothing to deploy.
-      (Note: Excel may show a one-time "format and extension don't match" prompt when opening — this is expected
-      for this file type; click Yes/OK and it opens fully formatted.)
-    </p>
   </section>
 
   <div class="focus-banner" id="focusBanner">
@@ -816,7 +794,6 @@
 
   <section id="registerSection">
     <h2 class="sectiontitle">Work item register <span class="count" id="regCount"></span></h2>
-    <p class="section-note">The Area-wise Execution Tracker — the single work register (the Issues punch list is no longer merged in, to avoid the same work being counted twice). Every tile, card and chart segment above is clickable and filters this register. "Progress %" is calculated from cumulative payment logged in Edit ÷ Estimated Amount.</p>
     <div class="filters">
       <input type="text" id="fSearch" placeholder="Search item, area, remarks…">
       <select id="fArea"><option value="">All areas / sections</option></select>
@@ -908,7 +885,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="reports-section" id="reportsSection">
     <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
-    <p class="section-note">Quick review lists for a daily or once-in-3-days progress meeting — pick a tab. Rows are clickable and filter the full register further down.</p>
     <div class="report-tabs">
       <button type="button" class="report-tab" data-report="daylog">🗞️ Day-wise work log (for next-day review)</button>
       <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
@@ -928,7 +904,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">🔴 Urgent works <span class="count" id="urgentCount"></span></h2>
-    <p class="section-note">Not-yet-completed items that are overdue against their own Estimated Time of Completion, due within 3 weeks (as of 08-Aug-2026), or explicitly tied to the inauguration deadline with no other schedule buffer.</p>
     <div class="urgent-list" id="urgentList"></div>
   </section>
   </div>
@@ -937,7 +912,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">⚠️ No activity this week <span class="count" id="stalledCount"></span></h2>
-    <p class="section-note" id="stalledNote"></p>
     <div class="stalled-list" id="stalledList"></div>
   </section>
   </div>
@@ -946,7 +920,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">Proposal / Tender / Design Stage <span class="count" id="proposalCount"></span></h2>
-    <p class="section-note">Items awaiting estimates, tender invitation, rate approval, or design finalisation before execution can start — the pre-construction pipeline the Engineering Section should track for approvals.</p>
     <div class="proposal-grid" id="proposalGrid"></div>
   </section>
   </div>
@@ -955,7 +928,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">Officer / Agency-wise work allotment <span class="count" id="officerCount"></span></h2>
-    <p class="section-note">Grouped by the "Pending With" field across the Area Tracker register. Name variants (e.g. "Vamsi", "Vamsi Krishna", "Vamsi garu") are merged to one entity.</p>
     <div class="officer-grid" id="officerGrid"></div>
   </section>
   </div>
@@ -964,7 +936,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">💰 Payment details report <span class="count" id="paymentReportCount"></span></h2>
-    <p class="section-note">Estimated amount, sanctioned amount, and cumulative payment logged so far (via Edit → Cumulative payment) for every work in the register — % complete is payment so far ÷ estimated amount. Only works with an estimated amount and/or a logged payment are listed.</p>
     <div class="tblwrap" style="max-height:420px;">
       <table class="dir" id="paymentReportTable">
         <thead><tr><th>Area / Section</th><th>Item</th><th>Estimated</th><th>Sanctioned</th><th>Payment so far</th><th>% Complete</th></tr></thead>
@@ -974,7 +945,6 @@
   </section>
   <section class="detail-section">
     <h2 class="sectiontitle">Financial mentions (legacy)</h2>
-    <p class="section-note">The source sheet does not maintain a structured cost/financial ledger — these are the only two free-text cost figures found in the original remarks, kept here for reference.</p>
     <div class="cost-grid" id="costGrid"></div>
   </section>
   </div>
@@ -996,7 +966,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section dossier">
     <h2 class="sectiontitle">🗓️ Agenda Review <span class="count" id="agendaReviewCount"></span></h2>
-    <p class="section-note" id="agendaReviewNote"></p>
 
     <div class="dossier-controls">
       <div class="dossier-summary">
@@ -1026,7 +995,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section dossier">
     <h2 class="sectiontitle">✍️ Add Agenda Items for Review <span class="count" id="myAgendaCount"></span></h2>
-    <p class="section-note">Build your own agenda list for any meeting — link each point to a work already in the register to get a live Administrative Sanction / Physical / Financial / Issues status pulled straight from the register, or type in a point that isn't tracked as a work at all. Entries are shared with everyone viewing this dashboard, the same way edits in Works → Edit are.</p>
 
     <div class="myagenda-add-card">
       <div class="myagenda-mode-toggle">
@@ -1061,7 +1029,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">💡 Suggested Additional Agenda <span class="count" id="suggestedCount"></span></h2>
-    <p class="section-note">Items surfaced from the fresh data (overdue against their own target date, stalled with no movement between the 5-Aug and 9-Aug sheet updates, newly listed in the 01-Sep pending-works file, or never having had a status recorded at all) that are not named anywhere in the agenda circulated for tomorrow's meeting. Worth a mention if time permits.</p>
     <div id="suggestedList"></div>
   </section>
   </div>
@@ -1070,7 +1037,6 @@
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
     <h2 class="sectiontitle">📦 Pending Works Snapshot <span class="count" id="pendingSnapCount"></span></h2>
-    <p class="section-note">The fresh "pending works" list as submitted on 01-Sep-2026, ahead of tomorrow's review — shown here exactly as provided, grouped by Civil and Electrical items.</p>
     <div id="pendingSnapBody"></div>
   </section>
   </div>
@@ -1700,7 +1666,6 @@ document.querySelectorAll('[data-urgent-idx]').forEach(el=>{
 const stalled = DATA.stalled_week;
 const sd = DATA.stalled_week_dates;
 document.getElementById('stalledCount').textContent = `(${stalled.length})`;
-document.getElementById('stalledNote').innerHTML = `The source sheet updates on a periodic snapshot basis, not daily — the closest available weekly comparison is its two most recent status columns, <b>${sd.from}</b> and <b>${sd.to}</b> (7 days apart). Items below have <u>identical remarks</u> in both columns, meaning no field update was logged between them. Already-completed items are excluded.`;
 document.getElementById('stalledList').innerHTML = stalled.map((s,i)=>{
   const st = styleFor(classifyForDisplay(s.status_raw));
   return `<div class="stalled-row clickable" data-stalled-idx="${i}">
@@ -2211,8 +2176,6 @@ function renderAgendaReview(){
   const meta = DATA.agenda_meta || {};
   document.getElementById('agendaReviewCount').textContent = `(${rows.length})`;
   const wellN = rows.filter(r=>r.flag==='Progressing well').length;
-  document.getElementById('agendaReviewNote').textContent =
-    `Every item from "${meta.source_doc||'the circulated agenda'}" (meeting on ${meta.meeting_date||''}) checked against the current register. Administrative Sanction is shown where the source states it outright, otherwise inferred from status. Physical Progress uses the figure typed into Works -> Edit's "Physical work progress (%)" field when one has been entered, and otherwise a judgment-based estimate from the recorded status ("Not available" where even that can't be estimated). Financial Progress is the real payment-based figure used across this dashboard — cumulative payment logged in Works -> Edit divided by Estimated Amount — so both read "Not available" until entered, and update live as they are. Use these as a starting point for discussion, not the final word.`;
   document.getElementById('agendaStatTotal').textContent = rows.length;
   document.getElementById('agendaStatWell').textContent = wellN;
   document.getElementById('agendaStatReview').textContent = rows.length - wellN;
