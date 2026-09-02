@@ -318,6 +318,35 @@
   .delete-summary{ background:var(--critical-bg); border:1px solid rgba(208,59,59,0.3); border-radius:10px; padding:14px 16px; font-size:12.5px; margin-bottom:14px; }
   .delete-summary .t{ font-weight:650; margin-bottom:6px; }
 
+  /* My Agenda (user-built agenda-for-review list) */
+  .myagenda-add-card{ display:flex; flex-direction:column; gap:12px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .myagenda-add-card label{ display:block; font-size:11.5px; color:var(--text-secondary); margin-bottom:6px; font-weight:600; }
+  .myagenda-add-card input[type=text], .myagenda-add-card select, .myagenda-add-card textarea{
+    width:100%; font-family:inherit; font-size:12.5px; padding:7px 10px; border-radius:7px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-primary); resize:vertical; margin-bottom:8px;
+  }
+  .myagenda-mode-toggle{ display:flex; gap:8px; flex-wrap:wrap; }
+  .myagenda-mode-btn{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-secondary); cursor:pointer;
+  }
+  .myagenda-mode-btn:hover{ background:var(--surface-1); border-color:rgba(11,11,11,0.22); }
+  .myagenda-mode-btn.active{ background:var(--series-1); border-color:var(--series-1); color:#fff; }
+  #btnMyAgendaAdd{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:8px 16px; border-radius:7px;
+    border:1px solid var(--series-1); background:var(--series-1); color:#fff; cursor:pointer; align-self:flex-start;
+  }
+  #btnMyAgendaAdd:hover{ opacity:0.9; }
+  .myagenda-empty{ font-size:12.5px; color:var(--text-muted); }
+  .myagenda-row{ position:relative; }
+  .myagenda-row .a-flag{ display:none; }
+  .myagenda-row .myagenda-del{
+    font-family:inherit; font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:6px;
+    border:1px solid var(--critical); background:var(--critical-bg); color:var(--critical); cursor:pointer; margin-top:8px;
+  }
+  .myagenda-row .myagenda-del:hover{ opacity:0.85; }
+  .myagenda-custom-tag{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-muted); background:var(--page); border:1px solid var(--border); border-radius:5px; padding:2px 7px; margin-left:6px; }
+
   @media (max-width: 980px){
     .add-form{ grid-template-columns:1fr; }
     .kpi-row{ grid-template-columns:repeat(3,1fr); }
@@ -537,6 +566,10 @@
           <input type="text" id="addContractor">
         </div>
         <div>
+          <label for="addPhysicalPct">Physical work progress (%)</label>
+          <input type="number" id="addPhysicalPct" min="0" max="100" step="1" placeholder="e.g. 65">
+        </div>
+        <div>
           <label for="addEstAmount">Estimated amount</label>
           <input type="text" id="addEstAmount" placeholder="e.g. ₹12,50,000">
         </div>
@@ -600,6 +633,10 @@
           <div>
             <label for="edContractor">Contractor</label>
             <input type="text" id="edContractor">
+          </div>
+          <div>
+            <label for="edPhysicalPct">Physical work progress (%)</label>
+            <input type="number" id="edPhysicalPct" min="0" max="100" step="1" placeholder="e.g. 65">
           </div>
           <div>
             <label for="edEstAmount">Estimated amount</label>
@@ -724,6 +761,11 @@
     <div class="menu-item" data-menu="agenda">
       <div class="mi-icon c-maroon">🗓️</div>
       <div class="mi-body"><div class="mi-title">Agenda Review — 02-Sep-2026</div><div class="mi-sub">Every agenda item vs. current progress, flagged at a glance</div></div>
+      <div class="mi-chevron">›</div>
+    </div>
+    <div class="menu-item" data-menu="myagenda">
+      <div class="mi-icon c-blue">✍️</div>
+      <div class="mi-body"><div class="mi-title">Add Agenda Items for Review</div><div class="mi-sub">Build your own list — link a tracked work or type one in — and get a live status report</div></div>
       <div class="mi-chevron">›</div>
     </div>
     <div class="menu-item" data-menu="suggested">
@@ -884,6 +926,41 @@
   </section>
   </div>
 
+  <div class="menu-detail" id="menuDetail-myagenda">
+    <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
+  <section class="detail-section">
+    <h2 class="sectiontitle">✍️ Add Agenda Items for Review <span class="count" id="myAgendaCount"></span></h2>
+    <p class="section-note">Build your own agenda list for any meeting — link each point to a work already in the register to get a live Administrative Sanction / Physical / Financial / Issues status pulled straight from the register, or type in a point that isn't tracked as a work at all. Entries are shared with everyone viewing this dashboard, the same way edits in Works → Edit are.</p>
+
+    <div class="myagenda-add-card">
+      <div class="myagenda-mode-toggle">
+        <button type="button" class="myagenda-mode-btn active" id="myAgendaModeLink" data-mode="link">🔗 Select from existing works</button>
+        <button type="button" class="myagenda-mode-btn" id="myAgendaModeType" data-mode="type">⌨️ Type it in</button>
+      </div>
+
+      <div id="myAgendaLinkPanel">
+        <label for="myAgendaSearch">Search works</label>
+        <input type="text" id="myAgendaSearch" placeholder="Type item name, area…">
+        <label for="myAgendaSelect">Select item</label>
+        <select id="myAgendaSelect" size="8"></select>
+        <label for="myAgendaLinkNote">Note (optional — e.g. what to ask / decide about this item)</label>
+        <input type="text" id="myAgendaLinkNote" placeholder="Optional note for the meeting">
+      </div>
+
+      <div id="myAgendaTypePanel" style="display:none;">
+        <label for="myAgendaTypeText">Agenda point</label>
+        <textarea id="myAgendaTypeText" rows="2" placeholder="Type the agenda point — this one isn't linked to a tracked work, so no automatic status will be shown for it."></textarea>
+      </div>
+
+      <div class="edit-actions">
+        <button type="button" id="btnMyAgendaAdd">➕ Add to review list</button>
+      </div>
+    </div>
+
+    <div id="myAgendaList"></div>
+  </section>
+  </div>
+
   <div class="menu-detail" id="menuDetail-suggested">
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
   <section class="detail-section">
@@ -962,7 +1039,7 @@ document.getElementById('latestSnapDate').textContent = DATA.kpis.sheet_last_sna
 // DATA.issue_items is left untouched in the underlying data file in case it's ever needed
 // again, it's just excluded from allItems / all counts / all reports below.
 const allItems = [
-  ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, _ref: it})),
+  ...DATA.area_items.map(it=>({source:'Area Tracker', area: it.area, sub: it.subarea, item: it.item, status_raw: it.status_raw, status_cat: it.status_cat, pending: it.pending_with, est: it.est_completion, contractor: it.contractor, dept: it.dept||null, est_amount: it.est_amount||null, sanctioned_amount: it.sanctioned_amount||null, sanction_source: it.sanction_source||null, physical_pct_manual: it.physical_pct_manual!=null?it.physical_pct_manual:null, _ref: it})),
 ];
 function itemKey(it){ return `${it.source}|||${it.area||''}|||${it.item}`; }
 
@@ -1687,11 +1764,14 @@ let syncAvailable = true;
 // OLD flat "{ [itemKey]: {fields} }" shape (what was stored before add/delete existed) by
 // treating it as pure edits, so older stored state keeps working with no migration step.
 function normalizeState(raw){
-  if (!raw || typeof raw !== 'object') return {edits:{}, additions:[], deletions:[], logs:[]};
-  if (raw.edits || raw.additions || raw.deletions || raw.logs){
-    return {edits: raw.edits||{}, additions: raw.additions||[], deletions: raw.deletions||[], logs: raw.logs||[]};
+  if (!raw || typeof raw !== 'object') return {edits:{}, additions:[], deletions:[], logs:[], agendaItems:[], agendaItemDeletions:[]};
+  if (raw.edits || raw.additions || raw.deletions || raw.logs || raw.agendaItems || raw.agendaItemDeletions){
+    return {
+      edits: raw.edits||{}, additions: raw.additions||[], deletions: raw.deletions||[], logs: raw.logs||[],
+      agendaItems: raw.agendaItems||[], agendaItemDeletions: raw.agendaItemDeletions||[],
+    };
   }
-  return {edits: raw, additions: [], deletions: [], logs: []};
+  return {edits: raw, additions: [], deletions: [], logs: [], agendaItems: [], agendaItemDeletions: []};
 }
 
 // Turns a plain "added item" object into a real allItems entry AND appends a matching
@@ -1700,8 +1780,8 @@ function normalizeState(raw){
 // baseline item).
 function materializeAddedItem(plain){
   const ref = (plain.source === 'Area Tracker')
-    ? {area: plain.area||null, subarea: plain.sub||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, est_completion: plain.est||null, contractor: plain.contractor||null, dept: plain.dept||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null}
-    : {section: plain.area||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, contractor: plain.contractor||null, dept: plain.dept||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null};
+    ? {area: plain.area||null, subarea: plain.sub||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, est_completion: plain.est||null, contractor: plain.contractor||null, dept: plain.dept||null, physical_pct_manual: plain.physical_pct_manual||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null}
+    : {section: plain.area||null, item: plain.item, status_raw: plain.status_raw||null, status_cat: plain.status_cat||null, pending_with: plain.pending||null, contractor: plain.contractor||null, dept: plain.dept||null, physical_pct_manual: plain.physical_pct_manual||null, est_amount: plain.est_amount||null, sanctioned_amount: plain.sanctioned_amount||null, sanction_source: plain.sanction_source||null, editedAt: plain.editedAt||null};
   if (plain.source === 'Area Tracker') DATA.area_items.push(ref); else DATA.issue_items.push(ref);
   const newItem = {...plain, _ref: ref};
   allItems.push(newItem);
@@ -1765,8 +1845,28 @@ async function pullSharedEdits(showBanner){
       });
     }
 
+    // 5) My Agenda items — additive (dedup by id) plus a shared deletion list, mirroring
+    // the edits/additions/deletions pattern above but on the separate agendaItems /
+    // agendaItemDeletions keys the Worker stores them under.
+    let agendaChanged = false;
+    if (state.agendaItemDeletions && state.agendaItemDeletions.length){
+      state.agendaItemDeletions.forEach(id=>{
+        if (!myAgendaDeletions.has(id)){ myAgendaDeletions.add(id); agendaChanged = true; }
+      });
+      const before = myAgendaItems.length;
+      myAgendaItems = myAgendaItems.filter(e=>!myAgendaDeletions.has(e.id));
+      if (myAgendaItems.length !== before) agendaChanged = true;
+    }
+    if (state.agendaItems && state.agendaItems.length){
+      const haveIds = new Set(myAgendaItems.map(e=>e.id));
+      state.agendaItems.forEach(e=>{
+        if (!haveIds.has(e.id) && !myAgendaDeletions.has(e.id)){ myAgendaItems.push(e); haveIds.add(e.id); agendaChanged = true; }
+      });
+    }
+    if (agendaChanged && typeof renderMyAgendaList === 'function') renderMyAgendaList();
+
     if (changed) recomputeDerived();
-    const totalStored = Object.keys(state.edits).length + (state.additions||[]).length + (state.logs||[]).length;
+    const totalStored = Object.keys(state.edits).length + (state.additions||[]).length + (state.logs||[]).length + (state.agendaItems||[]).length;
     updateSyncStatus(true, totalStored);
     if (showBanner) renderEditLog();
   } catch(e){
@@ -1779,7 +1879,7 @@ async function pushSharedEdit(it){
   try{
     const payload = { edits: { [itemKey(it)]: {
       status_cat: it.status_cat, status_raw: it.status_raw, pending: it.pending,
-      dept: it.dept, est: it.est, contractor: it.contractor,
+      dept: it.dept, est: it.est, contractor: it.contractor, physical_pct_manual: it.physical_pct_manual,
       est_amount: it.est_amount, sanctioned_amount: it.sanctioned_amount, sanction_source: it.sanction_source,
       editedAt: it.editedAt,
     }}};
@@ -1913,13 +2013,34 @@ function agendaOverallFinancialPct(comps){
   if (!vals.length) return null;
   return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
 }
+// Physical Progress: prefer the real figure an officer typed into Works -> Edit's
+// "Physical work progress (%)" field (physical_pct_manual) over the status-text-derived
+// estimate baked into DATA.agenda_review at build time. Like Financial Progress, only Area
+// Tracker items can carry a manually-entered figure; Issues Log / Pending Works components
+// keep the baked estimate since there's no live record to prefer.
+function livePhysicalPct(comp){
+  const fallback = (comp && comp.physical_pct != null) ? comp.physical_pct : null;
+  if (!comp || comp.kind !== 'area' || !comp.area || !comp.item_name) return fallback;
+  const key = `Area Tracker|||${comp.area}|||${comp.item_name}`;
+  const it = allItems.find(x => itemKey(x) === key);
+  if (!it || it.physical_pct_manual == null || it.physical_pct_manual === '') return fallback;
+  const n = Math.round(parseFloat(it.physical_pct_manual));
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : fallback;
+}
+function agendaOverallPhysicalPct(row){
+  const comps = row.status_components;
+  if (!comps || !comps.length) return row.physical_pct;
+  const vals = comps.map(livePhysicalPct).filter(v => v !== null);
+  if (!vals.length) return null;
+  return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
+}
 function agendaComponentsTable(comps){
   if (!comps || comps.length < 2) return '';
   const rows = comps.map(c => `
     <tr>
       <td class="comp-label">${esc(c.label)}${(c.dept||c.contractor) ? `<div class="comp-meta">${esc([c.dept, c.contractor].filter(Boolean).join(' · '))}</div>` : ''}</td>
       <td><span class="a-chip ${asChipClass(c.admin_sanction)}">${esc(c.admin_sanction)}</span></td>
-      <td>${pctText(c.physical_pct)}</td>
+      <td>${pctText(livePhysicalPct(c))}</td>
       <td>${pctText(liveFinancialPct(c))}</td>
       <td>${esc(c.issues_pendency)}</td>
     </tr>`).join('');
@@ -1934,7 +2055,7 @@ function renderAgendaReview(){
   document.getElementById('agendaReviewCount').textContent = `(${rows.length})`;
   const wellN = rows.filter(r=>r.flag==='Progressing well').length;
   document.getElementById('agendaReviewNote').textContent =
-    `Every item from "${meta.source_doc||'the circulated agenda'}" (meeting on ${meta.meeting_date||''}) checked against the current register — ${wellN} progressing well, ${rows.length-wellN} flagged for in-depth review. Administrative Sanction and Physical Progress % are shown where the source states them outright, and are otherwise a judgment-based estimate from the recorded status ("Not available" where even that can't be estimated). Financial Progress is the real payment-based figure used across this dashboard — cumulative payment logged in Works -> Edit divided by Estimated Amount — so it reads "Not available" until an Estimated Amount and payments are logged for that item; it will update live as those are entered. Use these as a starting point for discussion, not the final word.`;
+    `Every item from "${meta.source_doc||'the circulated agenda'}" (meeting on ${meta.meeting_date||''}) checked against the current register — ${wellN} progressing well, ${rows.length-wellN} flagged for in-depth review. Administrative Sanction is shown where the source states it outright, otherwise inferred from status. Physical Progress uses the figure typed into Works -> Edit's "Physical work progress (%)" field when one has been entered, and otherwise a judgment-based estimate from the recorded status ("Not available" where even that can't be estimated). Financial Progress is the real payment-based figure used across this dashboard — cumulative payment logged in Works -> Edit divided by Estimated Amount — so both read "Not available" until entered, and update live as they are. Use these as a starting point for discussion, not the final word.`;
   let html = '';
   let curSection = null;
   rows.forEach(r=>{
@@ -1949,7 +2070,7 @@ function renderAgendaReview(){
         <div class="a-title">${esc(r.text)}</div>
         <div class="a-status-strip">
           <span class="a-chip ${asChipClass(r.admin_sanction)}">Administrative Sanction: ${esc(r.admin_sanction)}</span>
-          <span class="a-chip">Physical Progress: ${pctText(r.physical_pct)}</span>
+          <span class="a-chip">Physical Progress: ${pctText(agendaOverallPhysicalPct(r))}</span>
           <span class="a-chip">Financial Progress: ${pctText(agendaOverallFinancialPct(r.status_components))}</span>
         </div>
         <div class="a-issues"><b>Issues / Pendency:</b> ${esc(r.issues_pendency)}</div>
@@ -1962,6 +2083,190 @@ function renderAgendaReview(){
   document.getElementById('agendaReviewList').innerHTML = html || '<span class="muted">No agenda data available.</span>';
 }
 renderAgendaReview();
+
+// ---------- My Agenda (user-built agenda-for-review list) ----------
+// JS ports of agenda_analysis.py's compute_admin_sanction / compute_physical_pct /
+// compute_issues_pendency, so the same "Progressing well / Needs in-depth review"-style
+// status can be worked out live for ANY work the user links in here — not just the fixed
+// 34-item circulated agenda, which is baked at build time in Python.
+const AS_POSITIVE_PAT = /\bAS\s*(is\s*)?(already\s*)?(approved|accorded|given|issued|received)\b|\badministrative\s+sanction\b[^.]{0,40}\b(approved|accorded|given|issued|received)\b/i;
+const AS_NEGATIVE_PAT = /\bAS\s*(is\s*)?(still\s*)?(awaited|pending|yet\s+to\s+be\s+(accorded|approved|issued|received))\b|\badministrative\s+sanction\b[^.]{0,40}\b(awaited|pending|not\s+yet)\b|\bwithout\s+(AS|administrative\s+sanction)\b|\bno\s+AS\b/i;
+const PHYSICAL_ESTIMATE_BY_CAT = {
+  'Completed':100, 'Partially Complete':75, 'In Progress':50,
+  'Proposal / Tender Stage':10, 'Design Stage':15, 'Not Started':0, 'Pending':0,
+  'Pending (Dependent on Other Work)':0,
+  'Tracked via completion date':null, 'Not Recorded':null, 'Other / Mixed':null,
+};
+function jsTextBlob(it){
+  const ref = it._ref || {};
+  return [it.status_raw, it.pending, ref.latest_update, ref.remarks, ref.extra_note].filter(Boolean).join(' | ');
+}
+function jsAdminSanction(it){
+  const blob = jsTextBlob(it);
+  if (AS_NEGATIVE_PAT.test(blob)) return 'No';
+  if (AS_POSITIVE_PAT.test(blob)) return 'Yes';
+  const cat = it.status_cat;
+  if (['Completed','Partially Complete','In Progress'].includes(cat)) return 'Yes';
+  if (['Proposal / Tender Stage','Design Stage'].includes(cat)) return 'No';
+  return 'Not stated in source';
+}
+function jsPhysicalEstimate(it){
+  // Manual entry (Works -> Edit) always wins, same as livePhysicalPct().
+  if (it.physical_pct_manual != null && it.physical_pct_manual !== ''){
+    const n = Math.round(parseFloat(it.physical_pct_manual));
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, n));
+  }
+  const blob = jsTextBlob(it);
+  const m = blob.match(/(\d{1,3})\s*%/);
+  if (m) return Math.min(parseInt(m[1],10), 100);
+  const est = PHYSICAL_ESTIMATE_BY_CAT[it.status_cat];
+  return (est === undefined) ? null : est;
+}
+function jsIssuesPendency(it){
+  if (it.status_cat === 'Completed') return 'None — completed.';
+  const parts = [];
+  const ref = it._ref || {};
+  const remark = (ref.latest_update || '').trim();
+  if (remark) parts.push(remark);
+  const pw = it.pending;
+  if (pw && !['NA','N/A',''].includes(String(pw).trim().toUpperCase())) parts.push(`Pending with: ${pw}`);
+  return parts.length ? parts.join('; ') : 'No specific issue recorded in source.';
+}
+
+let myAgendaItems = [];   // {id, addedAt, type:'linked'|'custom', item_key, item_label, note, text}
+let myAgendaDeletions = new Set();
+let myAgendaMode = 'link';
+
+document.getElementById('myAgendaModeLink').addEventListener('click', ()=> setMyAgendaMode('link'));
+document.getElementById('myAgendaModeType').addEventListener('click', ()=> setMyAgendaMode('type'));
+function setMyAgendaMode(mode){
+  myAgendaMode = mode;
+  document.getElementById('myAgendaModeLink').classList.toggle('active', mode==='link');
+  document.getElementById('myAgendaModeType').classList.toggle('active', mode==='type');
+  document.getElementById('myAgendaLinkPanel').style.display = mode==='link' ? '' : 'none';
+  document.getElementById('myAgendaTypePanel').style.display = mode==='type' ? '' : 'none';
+}
+
+function myAgendaItemLabel(it){ return `${it.area? it.area+' — ':''}${it.item}`; }
+function renderMyAgendaPicker(filterText){
+  const q = (filterText||'').toLowerCase();
+  const sel = document.getElementById('myAgendaSelect');
+  const matches = [];
+  allItems.forEach((it,i)=>{
+    const hay = `${it.source} ${it.area||''} ${it.item}`.toLowerCase();
+    if (!q || hay.includes(q)) matches.push(i);
+  });
+  sel.innerHTML = matches.slice(0,300).map(i=>`<option value="${i}">${myAgendaItemLabel(allItems[i]).replace(/</g,'&lt;')}</option>`).join('');
+}
+renderMyAgendaPicker('');
+document.getElementById('myAgendaSearch').addEventListener('input', e=> renderMyAgendaPicker(e.target.value));
+
+document.getElementById('btnMyAgendaAdd').addEventListener('click', ()=>{
+  if (myAgendaMode === 'link'){
+    const sel = document.getElementById('myAgendaSelect');
+    const idx = +sel.value;
+    if (Number.isNaN(idx) || !allItems[idx]){ alert('Select a work from the list first.'); return; }
+    const it = allItems[idx];
+    const note = document.getElementById('myAgendaLinkNote').value.trim();
+    const entry = {
+      id: 'AG-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      addedAt: new Date().toISOString(), type:'linked',
+      item_key: itemKey(it), item_label: myAgendaItemLabel(it), note,
+    };
+    myAgendaItems.push(entry);
+    pushAgendaItem(entry);
+    document.getElementById('myAgendaLinkNote').value = '';
+  } else {
+    const ta = document.getElementById('myAgendaTypeText');
+    const text = ta.value.trim();
+    if (!text){ alert('Type the agenda point first.'); return; }
+    const entry = {
+      id: 'AG-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+      addedAt: new Date().toISOString(), type:'custom', text,
+    };
+    myAgendaItems.push(entry);
+    pushAgendaItem(entry);
+    ta.value = '';
+  }
+  renderMyAgendaList();
+});
+
+function myAgendaDelete(id){
+  myAgendaItems = myAgendaItems.filter(e=>e.id!==id);
+  myAgendaDeletions.add(id);
+  pushAgendaItemDeletion(id);
+  renderMyAgendaList();
+}
+window.myAgendaDelete = myAgendaDelete;
+
+function renderMyAgendaList(){
+  const countEl = document.getElementById('myAgendaCount');
+  if (countEl) countEl.textContent = `(${myAgendaItems.length})`;
+  const wrap = document.getElementById('myAgendaList');
+  if (!wrap) return;
+  if (!myAgendaItems.length){
+    wrap.innerHTML = '<div class="myagenda-empty">No agenda items added yet — link a work above or type one in to build your list.</div>';
+    return;
+  }
+  const rows = myAgendaItems.slice().sort((a,b)=> (a.addedAt<b.addedAt?1:-1)).map(entry=>{
+    if (entry.type === 'custom'){
+      return `<div class="agenda-row review myagenda-row">
+        <div class="a-body">
+          <div class="a-title">${esc(entry.text)}<span class="myagenda-custom-tag">Not linked to a tracked work</span></div>
+        </div>
+        <button type="button" class="myagenda-del" onclick="myAgendaDelete('${entry.id}')">🗑️ Remove</button>
+      </div>`;
+    }
+    const it = allItems.find(x=>itemKey(x)===entry.item_key);
+    if (!it){
+      return `<div class="agenda-row review myagenda-row">
+        <div class="a-body">
+          <div class="a-title">${esc(entry.item_label)}<span class="myagenda-custom-tag">Linked work no longer found in register</span></div>
+          ${entry.note?`<div class="a-issues"><b>Note:</b> ${esc(entry.note)}</div>`:''}
+        </div>
+        <button type="button" class="myagenda-del" onclick="myAgendaDelete('${entry.id}')">🗑️ Remove</button>
+      </div>`;
+    }
+    const as = jsAdminSanction(it);
+    const phys = jsPhysicalEstimate(it);
+    const fin = pctComplete(it);
+    const issues = jsIssuesPendency(it);
+    return `<div class="agenda-row review myagenda-row">
+      <div class="a-body">
+        <div class="a-title">${esc(entry.item_label)}</div>
+        <div class="a-status-strip">
+          <span class="a-chip ${asChipClass(as)}">Administrative Sanction: ${esc(as)}</span>
+          <span class="a-chip">Physical Progress: ${pctText(phys)}</span>
+          <span class="a-chip">Financial Progress: ${pctText(fin)}</span>
+        </div>
+        <div class="a-issues"><b>Issues / Pendency:</b> ${esc(issues)}</div>
+        ${entry.note?`<div class="a-progress" style="margin-top:6px;"><i>Note: ${esc(entry.note)}</i></div>`:''}
+      </div>
+      <button type="button" class="myagenda-del" onclick="myAgendaDelete('${entry.id}')">🗑️ Remove</button>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = rows;
+}
+renderMyAgendaList();
+
+async function pushAgendaItem(entry){
+  try{
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agendaItems: [ entry ] })
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){ syncAvailable = false; updateSyncStatus(false, 0); }
+}
+async function pushAgendaItemDeletion(id){
+  try{
+    const res = await fetch(SYNC_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ agendaItemDeletions: [ id ] })
+    });
+    syncAvailable = res.ok;
+    updateSyncStatus(res.ok, null);
+  } catch(e){ syncAvailable = false; updateSyncStatus(false, 0); }
+}
 
 // ---------- Suggested Additional Agenda ----------
 (function renderSuggestedAgenda(){
@@ -2091,6 +2396,7 @@ document.getElementById('editSelect').addEventListener('change', e=>{
   document.getElementById('edDept').value = it.dept || '';
   document.getElementById('edEst').value = it.est || '';
   document.getElementById('edContractor').value = it.contractor || '';
+  document.getElementById('edPhysicalPct').value = (it.physical_pct_manual!=null) ? it.physical_pct_manual : '';
   document.getElementById('edEstAmount').value = it.est_amount || '';
   document.getElementById('edSanctionedAmount').value = it.sanctioned_amount || '';
   document.getElementById('edSanctionSource').value = it.sanction_source || '';
@@ -2142,12 +2448,13 @@ const EDIT_FIELDS = [
   {key:'dept', label:'Executing department', inputId:'edDept'},
   {key:'est', label:'Est. completion', inputId:'edEst'},
   {key:'contractor', label:'Contractor', inputId:'edContractor'},
+  {key:'physical_pct_manual', label:'Physical work progress (%)', inputId:'edPhysicalPct'},
   {key:'est_amount', label:'Estimated amount', inputId:'edEstAmount'},
   {key:'sanctioned_amount', label:'Sanctioned amount', inputId:'edSanctionedAmount'},
   {key:'sanction_source', label:'Source of sanctioned amount', inputId:'edSanctionSource'},
 ];
 // allItems field name -> underlying _ref (DATA.area_items / DATA.issue_items) field name — a couple differ
-const REF_FIELD_MAP = {status_cat:'status_cat', status_raw:'status_raw', pending:'pending_with', dept:'dept', est:'est_completion', contractor:'contractor', est_amount:'est_amount', sanctioned_amount:'sanctioned_amount', sanction_source:'sanction_source'};
+const REF_FIELD_MAP = {status_cat:'status_cat', status_raw:'status_raw', pending:'pending_with', dept:'dept', est:'est_completion', contractor:'contractor', physical_pct_manual:'physical_pct_manual', est_amount:'est_amount', sanctioned_amount:'sanctioned_amount', sanction_source:'sanction_source'};
 
 document.getElementById('btnPreview').addEventListener('click', ()=>{
   if (editSelIdx===null) return;
@@ -2216,6 +2523,7 @@ const ADD_FIELDS = [
   {key:'dept', label:'Executing department', inputId:'addDept'},
   {key:'est', label:'Est. completion', inputId:'addEst'},
   {key:'contractor', label:'Contractor', inputId:'addContractor'},
+  {key:'physical_pct_manual', label:'Physical work progress (%)', inputId:'addPhysicalPct'},
   {key:'est_amount', label:'Estimated amount', inputId:'addEstAmount'},
   {key:'sanctioned_amount', label:'Sanctioned amount', inputId:'addSanctionedAmount'},
   {key:'sanction_source', label:'Source of sanctioned amount', inputId:'addSanctionSource'},
