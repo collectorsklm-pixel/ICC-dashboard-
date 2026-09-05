@@ -317,15 +317,23 @@
     border:1px solid var(--border); background:var(--surface-1); color:var(--text-primary); cursor:pointer;
   }
   .report-download-row button:hover{ background:var(--page); border-color:rgba(11,11,11,0.22); }
+  .daylog-date-row{ display:flex; align-items:center; gap:10px; margin-bottom:14px; padding:10px 12px; background:var(--surface-1); border:1px solid var(--border); border-radius:10px; }
+  .daylog-date-row label{ font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .daylog-date-row input[type="date"]{
+    font-family:inherit; font-size:13px; padding:6px 10px; border-radius:8px; border:1px solid var(--border);
+    background:var(--page); color:var(--text-primary);
+  }
+  .daylog-date-row button{
+    font-family:inherit; font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:8px;
+    border:1px solid var(--border); background:var(--page); color:var(--text-primary); cursor:pointer;
+  }
+  .daylog-date-row button:hover{ background:var(--surface-1); border-color:rgba(11,11,11,0.22); }
   .report-list{ display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
   .report-row{ background:var(--page); border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer; transition:box-shadow .12s ease, border-color .12s ease; }
   .report-row:hover{ box-shadow:0 2px 10px rgba(11,11,11,0.10); border-color:rgba(11,11,11,0.22); }
   .report-row .t{ font-weight:600; font-size:13px; }
   .report-row .m{ font-size:11.5px; color:var(--text-secondary); margin-top:2px; }
   .report-row .m2{ font-size:11.5px; margin-top:4px; line-height:1.5; }
-  .daylog-group{ margin-bottom:14px; }
-  .daylog-date-header{ font-size:12px; font-weight:700; color:var(--text-secondary); margin:0 0 8px 2px; text-transform:uppercase; letter-spacing:.02em; }
-  .daylog-group .report-row{ margin-bottom:8px; }
 
   /* edit-a-work-item section */
   .edit-grid{ display:grid; grid-template-columns:280px 1fr; gap:20px; margin-bottom:18px; }
@@ -965,7 +973,7 @@
     <div class="tblwrap">
       <table class="reg">
         <thead><tr>
-          <th>Area / Section</th><th>Item</th><th>Status</th><th>Physical %</th><th>Financial %</th><th>Assigned EA</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
+          <th>Area / Section</th><th>Item</th><th>Status</th><th>Physical %</th><th>Financial %</th><th>Assigned EA</th><th>Updated Today?</th><th>Department</th><th>Pending With</th><th>Est. Completion</th><th>Contractor</th>
         </tr></thead>
         <tbody id="regBody"></tbody>
       </table>
@@ -978,10 +986,15 @@
   <section class="reports-section" id="reportsSection">
     <h2 class="sectiontitle">📋 Reports <span class="count" id="reportsCount"></span></h2>
     <div class="report-tabs">
-      <button type="button" class="report-tab" data-report="daylog">🗞️ Day-wise work log (for next-day review)</button>
+      <button type="button" class="report-tab" data-report="daylog">🗞️ Day-wise work log</button>
       <button type="button" class="report-tab active" data-report="daily">🟡 Daily progress (work currently active)</button>
       <button type="button" class="report-tab" data-report="weekly">📈 Weekly progress (movement this week)</button>
       <button type="button" class="report-tab" data-report="notaken">⚠️ Not taken up this week</button>
+    </div>
+    <div class="daylog-date-row" id="daylogDateRow" style="display:none;">
+      <label for="daylogDate">Show updates for:</label>
+      <input type="date" id="daylogDate">
+      <button type="button" id="btnDaylogToday">Today</button>
     </div>
     <div class="report-download-row">
       <span class="rd-label">Download this report:</span>
@@ -1437,8 +1450,13 @@ document.querySelectorAll('.menu-back-btn').forEach(btn=>{
 // The register now lives behind Progress -> Work Item Register (a submenu panel, not a flat
 // tab), so jumping to it needs both switchTab('progress') and showMenuDetail('register').
 let focusPredicate = null;
-function applyFocus(pred, label){
+// When set (currently only by the Today tab's EA tiles), renderRegister() lists the not-yet-
+// updated-today works first within the focused set, so the person clicking an EA tile sees
+// "what still needs updating" right at the top instead of having to scan the whole list.
+let focusSortNotUpdatedFirst = false;
+function applyFocus(pred, label, opts){
   focusPredicate = pred;
+  focusSortNotUpdatedFirst = !!(opts && opts.sortNotUpdatedFirst);
   document.getElementById('focusLabel').textContent = label;
   document.getElementById('focusBanner').classList.add('active');
   if (typeof renderRegister === 'function') renderRegister();
@@ -1449,6 +1467,7 @@ function applyFocus(pred, label){
 }
 function clearFocus(){
   focusPredicate = null;
+  focusSortNotUpdatedFirst = false;
   document.getElementById('focusBanner').classList.remove('active');
   ['fSearch'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   ['fArea','fStatus','fPending','fDept'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -1781,7 +1800,11 @@ function renderEaTiles(){
   }
   document.querySelectorAll('#eaTileGrid [data-ea]').forEach(el=>{
     const name = decodeURIComponent(el.dataset.ea);
-    el.addEventListener('click', ()=> applyFocus(it=> (it.assigned_ea||'')===name, `Engineering Assistant: ${name}`));
+    el.addEventListener('click', ()=> applyFocus(
+      it=> (it.assigned_ea||'')===name,
+      `Engineering Assistant: ${name} — works needing today's update are listed first, with an "Updated Today?" column`,
+      { sortNotUpdatedFirst: true }
+    ));
   });
 }
 
@@ -1837,6 +1860,11 @@ function focusOnItem(source, area, itemName, label){
 // those two stay snapshot-based and won't move if you edit an item here (same scope limit
 // as Officer cards / Urgent works / No-activity-this-week further down the page).
 let activeReportTab = 'daily';
+// Day-wise work log is scoped to one calendar day at a time — defaults to today, since this
+// report is what the Collector/EA actually opens same-evening to see today's updates, not a
+// running history of every day ever logged. The date-picker (#daylogDate) lets anyone step
+// back to an earlier day without losing that "just today" default.
+let daylogDate = todayStr();
 function dayLabel(dateStr){
   const today = todayStr();
   const yest = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
@@ -1846,24 +1874,23 @@ function dayLabel(dateStr){
 }
 function renderReports(){
   const body = document.getElementById('reportBody');
+  const daylogRow = document.getElementById('daylogDateRow');
+  if (daylogRow) daylogRow.style.display = (activeReportTab === 'daylog') ? 'flex' : 'none';
   if (activeReportTab === 'daylog'){
-    // Every "Today's update" note and every payment entry logged in Edit, for the Collector
-    // to review the next morning — grouped by day, most recent day first.
-    document.getElementById('reportsCount').textContent = `(${workLog.length} logged entr${workLog.length===1?'y':'ies'})`;
-    if (!workLog.length){
-      body.innerHTML = '<div class="section-note">No day-wise updates logged yet — use "Update current work details (Today)" or "Add payment entry" in the Edit tab to start building this log. It will then show here, grouped by day, for the next-day review.</div>';
+    // Every "Today's update" note and every payment entry logged in Edit, for whichever single
+    // day is selected above (default: today) — not the full history, so the evening review
+    // shows just what happened today instead of every day ever logged.
+    const dayEntries = workLog.filter(l=> l.date===daylogDate).slice().sort((a,b)=> b.ts-a.ts);
+    document.getElementById('reportsCount').textContent = `(${dayEntries.length} logged entr${dayEntries.length===1?'y':'ies'} — ${dayLabel(daylogDate)})`;
+    if (!dayEntries.length){
+      const isToday = daylogDate === todayStr();
+      body.innerHTML = `<div class="section-note">No updates logged for ${dayLabel(daylogDate)}${isToday?' yet':''} — use "Update current work details (Today)" or "Add payment entry" in Manage Work Items → Edit to start building this log${isToday?'. It will then show here immediately':''}. Use the date field above to check an earlier day.</div>`;
     } else {
-      const byDate = {};
-      workLog.forEach(l=>{ (byDate[l.date] = byDate[l.date]||[]).push(l); });
-      const dates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
-      body.innerHTML = dates.map(d=>{
-        const rows = byDate[d].slice().sort((a,b)=> b.ts-a.ts).map((l,i)=>`
-          <div class="report-row" data-daylog-id="${l.id}">
-            <div class="t">${l.label}</div>
-            <div class="m">${l.area?l.area+' &middot; ':''}${l.type==='payment' ? '💰 Payment added: <b>'+formatINR(parseAmount(l.amount))+'</b>' : '📝 '+(l.note||'').replace(/</g,'&lt;')}</div>
-          </div>`).join('');
-        return `<div class="daylog-group"><div class="daylog-date-header">${dayLabel(d)} <span class="muted">(${byDate[d].length})</span></div>${rows}</div>`;
-      }).join('');
+      body.innerHTML = dayEntries.map(l=>`
+        <div class="report-row" data-daylog-id="${l.id}">
+          <div class="t">${l.label}</div>
+          <div class="m">${l.area?l.area+' &middot; ':''}${l.type==='payment' ? '💰 Payment added: <b>'+formatINR(parseAmount(l.amount))+'</b>' : '📝 '+(l.note||'').replace(/</g,'&lt;')}</div>
+        </div>`).join('');
       document.querySelectorAll('#reportBody [data-daylog-id]').forEach(el=>{
         const l = workLog.find(x=>x.id===el.dataset.daylogId);
         if (!l) return;
@@ -1917,14 +1944,36 @@ function renderReports(){
     });
   }
 }
-document.querySelectorAll('.report-tab').forEach(btn=>{
+// Scoped to #reportsSection specifically — the Targets tab's Achievement/Unassigned buttons
+// share the same .report-tab CSS class (for consistent styling) but must not be picked up here,
+// since they carry data-treport, not data-report, and are handled by their own listener further
+// down; querying unscoped previously meant clicking a Targets button also fired this handler,
+// clearing activeReportTab to undefined and corrupting which Reports panel showed next.
+document.querySelectorAll('#reportsSection .report-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.report-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#reportsSection .report-tab').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     activeReportTab = btn.dataset.report;
     renderReports();
   });
 });
+const daylogDateInput = document.getElementById('daylogDate');
+if (daylogDateInput){
+  daylogDateInput.value = daylogDate;
+  daylogDateInput.max = todayStr();
+  daylogDateInput.addEventListener('change', ()=>{
+    if (daylogDateInput.value) daylogDate = daylogDateInput.value;
+    renderReports();
+  });
+}
+const btnDaylogToday = document.getElementById('btnDaylogToday');
+if (btnDaylogToday){
+  btnDaylogToday.addEventListener('click', ()=>{
+    daylogDate = todayStr();
+    if (daylogDateInput) daylogDateInput.value = daylogDate;
+    renderReports();
+  });
+}
 renderReports();
 
 // ---------- Urgent works ----------
@@ -2046,8 +2095,13 @@ function renderRegister(){
     if (focusPredicate && !focusPredicate(it)) return false;
     return true;
   });
-  document.getElementById('regBody').innerHTML = filtered.map(it=>{
+  if (focusSortNotUpdatedFirst){
+    const notUpdated = (it)=> !workLog.some(l=> l.key===itemKey(it) && l.date===todayStr());
+    filtered.sort((a,b)=> (notUpdated(a)===notUpdated(b)) ? 0 : (notUpdated(a) ? -1 : 1));
+  }
+  document.getElementById('regBody').innerHTML = filtered.length ? filtered.map(it=>{
     const st = styleFor(it.status_cat);
+    const updatedToday = workLog.some(l=> l.key===itemKey(it) && l.date===todayStr());
     return `<tr>
       <td>${it.area||''}${it.sub&&it.sub!==it.item?' / '+it.sub:''}</td>
       <td class="item-name">${it.item}</td>
@@ -2055,12 +2109,13 @@ function renderRegister(){
       <td>${pctBarHtml(jsPhysicalEstimate(it))}</td>
       <td>${progressBadge(it)}</td>
       <td>${it.assigned_ea||'<span class=\"muted\">Unassigned</span>'}</td>
+      <td>${updatedToday ? '<span class=\"status-chip\" style=\"background:var(--good);color:#fff;\">✅ Updated</span>' : '<span class=\"status-chip\" style=\"background:var(--critical);color:#fff;\">🔴 Not yet</span>'}</td>
       <td>${it.dept||'<span class=\"muted\">Not assigned</span>'}</td>
       <td>${it.pending||'<span class=\"muted\">—</span>'}</td>
       <td>${it.est||'<span class=\"muted\">—</span>'}</td>
       <td>${it.contractor||'<span class=\"muted\">—</span>'}</td>
     </tr>`;
-  }).join('');
+  }).join('') : `<tr><td colspan="11"><div class="section-note">No works match the current filters.</div></td></tr>`;
   document.getElementById('regCount').textContent = filtered.length===allItems.length ? `(${allItems.length})` : `(${filtered.length} of ${allItems.length})`;
 }
 ['fSearch','fArea','fStatus','fPending','fDept'].forEach(id=>{
@@ -3221,14 +3276,15 @@ function xlCell(val, styleId){
 function getReportExportData(){
   const areaSub = (area, sub, item) => [area||'', sub && sub!==item ? sub : null].filter(Boolean).join(' / ');
   if (activeReportTab === 'daylog'){
-    const sorted = workLog.slice().sort((a,b)=> b.date.localeCompare(a.date) || b.ts-a.ts);
+    // Exports whichever single day is currently selected in #daylogDate (default: today) —
+    // matches exactly what's on screen, not the full multi-day history.
+    const sorted = workLog.filter(l=> l.date===daylogDate).slice().sort((a,b)=> b.ts-a.ts);
     const rows = sorted.map(l=> [
-      dayLabel(l.date).replace(/\s*\(.*\)/,'') + ' (' + l.date + ')',
-      l.label || '', l.area || '',
+      l.date, l.label || '', l.area || '',
       l.type==='payment' ? 'Payment' : 'Note',
       l.type==='payment' ? formatINR(parseAmount(l.amount)) : (l.note||''),
     ]);
-    return { title:'ICC Srikakulam — Day-wise Work Log', filename:'ICC_Daywise_Work_Log', headers:['Date','Work Item','Area','Type','Details'], rows };
+    return { title:`ICC Srikakulam — Day-wise Work Log — ${dayLabel(daylogDate)}`, filename:`ICC_Daywise_Work_Log_${daylogDate}`, headers:['Date','Work Item','Area','Type','Details'], rows };
   }
   if (activeReportTab === 'daily'){
     const items = allItems.filter(it=>it.status_cat==='In Progress');
@@ -3404,13 +3460,14 @@ document.getElementById('menuActionPdf').addEventListener('click', ()=>{
   doc.setFontSize(9);
   doc.setTextColor(100);
   doc.text('Generated ' + new Date().toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) + '  ·  ' + allItems.length + ' items', 40, 48);
-  const headers = [['Source','Area / Section','Item','Status','Assigned EA','Physical %','Department','Pending With','Est. Completion','Contractor','Est. Amount','Sanctioned Amount','Sanction Source','Payment So Far','Financial % Complete']];
+  const headers = [['Source','Area / Section','Item','Status','Assigned EA','Updated Today?','Physical %','Department','Pending With','Est. Completion','Contractor','Est. Amount','Sanctioned Amount','Sanction Source','Payment So Far','Financial % Complete']];
   const rows = allItems.map(it=>{
     const pct = pctComplete(it);
     const physPct = jsPhysicalEstimate(it);
     const paid = paymentSoFar(it);
+    const updatedToday = workLog.some(l=> l.key===itemKey(it) && l.date===todayStr());
     return [
-      it.source, it.area||'', it.item, it.status_cat||'', it.assigned_ea||'Unassigned', physPct===null?'':physPct+'%', it.dept||'Not Assigned', it.pending||'',
+      it.source, it.area||'', it.item, it.status_cat||'', it.assigned_ea||'Unassigned', updatedToday?'Yes':'No', physPct===null?'':physPct+'%', it.dept||'Not Assigned', it.pending||'',
       it.est||'', it.contractor||'', it.est_amount||'', it.sanctioned_amount||'', it.sanction_source||'',
       paid>0?formatINR(paid):'', pct===null?'':pct+'%',
     ];
