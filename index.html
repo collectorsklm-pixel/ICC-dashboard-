@@ -522,12 +522,6 @@
   .menu-item .mi-title{ font-weight:650; font-size:14px; }
   .menu-item .mi-sub{ font-size:11.5px; color:var(--text-secondary); margin-top:2px; }
   .menu-item .mi-chevron{ color:var(--text-muted); font-size:18px; flex-shrink:0; }
-  .menu-list-divider{
-    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
-    color:var(--text-muted); padding:6px 4px 0; margin-top:2px; border-top:1px solid var(--border);
-  }
-  .menu-item-shortcut{ opacity:.9; }
-  .menu-item-shortcut .mi-sub{ font-style:italic; }
   .menu-detail{ display:none; }
   .menu-detail.active{ display:block; }
   .menu-detail-header{ margin-bottom:14px; }
@@ -1088,17 +1082,6 @@
       <div class="mi-body"><div class="mi-title">Suggested Additional Agenda</div><div class="mi-sub">Overdue / stalled items not on tomorrow's agenda</div></div>
       <div class="mi-chevron">›</div>
     </div>
-    <div class="menu-list-divider">Quick links</div>
-    <div class="menu-item menu-item-shortcut" data-shortcut="overview">
-      <div class="mi-icon c-blue">📊</div>
-      <div class="mi-body"><div class="mi-title">Overview</div><div class="mi-sub">Opens in the Progress tab</div></div>
-      <div class="mi-chevron">↗</div>
-    </div>
-    <div class="menu-item menu-item-shortcut" data-shortcut="manage">
-      <div class="mi-icon c-green">🛠️</div>
-      <div class="mi-body"><div class="mi-title">Manage Work Items</div><div class="mi-sub">Opens in the Progress tab</div></div>
-      <div class="mi-chevron">↗</div>
-    </div>
   </div>
 
   <div class="menu-content" id="urgentMenuContent">
@@ -1448,20 +1431,6 @@ document.querySelectorAll('.menu-item[data-menu]').forEach(el=>{
 });
 document.querySelectorAll('.menu-back-btn').forEach(btn=>{
   btn.addEventListener('click', showMenuList);
-});
-
-// "Quick links" shortcuts (currently: Overview, Manage Work Items) shown at the bottom of the
-// Urgent tab's left panel. Overview/Manage's actual content lives only once, inside the Progress
-// tab's menu-content — these shortcuts don't duplicate that content (which would mean two sets of
-// charts/forms to keep in sync); they just switch to the Progress tab and open the matching
-// section there, same pattern as applyFocus() jumping to Work Item Register.
-document.querySelectorAll('.menu-item-shortcut[data-shortcut]').forEach(el=>{
-  el.addEventListener('click', ()=>{
-    switchTab('progress', {scrollTop:false, resetMenu:false});
-    showMenuDetail(el.dataset.shortcut);
-    const target = document.getElementById('menuDetail-'+el.dataset.shortcut);
-    if (target) target.scrollIntoView({behavior:'instant', block:'start'});
-  });
 });
 
 // ---------- Focus mode: click any tile to show only the matching rows in the register ----------
