@@ -523,6 +523,28 @@
     border:1px solid var(--border); background:var(--surface-1); color:var(--text-primary); cursor:pointer;
   }
   .menu-back-btn:hover{ background:var(--page); }
+  .menu-placeholder{ display:none; }
+
+  /* Wide screens: the Menu tab becomes a persistent left submenu + content pane —
+     click an item on the left, its content appears on the right immediately, no
+     back-and-forth navigation. Narrow/mobile screens keep the original tap-into-
+     full-page-with-back-button pattern, since there's no room for two columns. */
+  @media (min-width: 900px){
+    .menu-layout{ display:flex; align-items:flex-start; gap:22px; }
+    #menuList{
+      display:flex !important; flex-direction:column; gap:8px; flex:none; width:290px;
+      position:sticky; top:16px; max-height:calc(100vh - 32px); overflow-y:auto; padding-right:2px;
+    }
+    .menu-item{ padding:11px 13px; }
+    .menu-item.active{ border-color:var(--series-1); box-shadow:0 0 0 1px var(--series-1) inset; }
+    #menuContent{ flex:1; min-width:0; }
+    .menu-detail-header{ display:none; }
+    .menu-placeholder:not([hidden]){
+      display:flex; align-items:center; justify-content:center; min-height:260px;
+      color:var(--text-muted); font-size:13.5px; text-align:center; border:1px dashed var(--border);
+      border-radius:12px; padding:20px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -813,6 +835,7 @@
   </div>
 
   <div class="app-tab" id="tabMenu">
+  <div class="menu-layout" id="menuLayout">
   <div class="menu-list" id="menuList">
     <div class="menu-item" data-menu="agenda">
       <div class="mi-icon c-maroon">🗓️</div>
@@ -880,6 +903,9 @@
       <div class="mi-chevron">⤓</div>
     </div>
   </div>
+
+  <div class="menu-content" id="menuContent">
+  <div class="menu-placeholder" id="menuPlaceholder">Select an item on the left to view it here.</div>
 
   <div class="menu-detail" id="menuDetail-reports">
     <div class="menu-detail-header"><button type="button" class="menu-back-btn">← Menu</button></div>
@@ -1048,6 +1074,8 @@
     <div class="notes-box" id="notesBox"></div>
   </section>
   </div>
+  </div>
+  </div>
 
   <footer>
     Data refreshed from the ICC Google Sheet, the latest pending-works Excel, and the circulated meeting agenda on <span id="genDate2"></span>. Status categories, officer-name merges, and contractor matches are derived programmatically — please have the Engineering Section spot-check before circulating externally.
@@ -1170,6 +1198,9 @@ function showMenuList(){
   const list = document.getElementById('menuList');
   if (list) list.style.display = '';
   document.querySelectorAll('.menu-detail').forEach(d=> d.classList.remove('active'));
+  document.querySelectorAll('.menu-item[data-menu]').forEach(el=> el.classList.remove('active'));
+  const placeholder = document.getElementById('menuPlaceholder');
+  if (placeholder) placeholder.hidden = false;
 }
 function showMenuDetail(name){
   const list = document.getElementById('menuList');
@@ -1177,6 +1208,11 @@ function showMenuDetail(name){
   document.querySelectorAll('.menu-detail').forEach(d=>{
     d.classList.toggle('active', d.id === 'menuDetail-'+name);
   });
+  document.querySelectorAll('.menu-item[data-menu]').forEach(el=>{
+    el.classList.toggle('active', el.dataset.menu === name);
+  });
+  const placeholder = document.getElementById('menuPlaceholder');
+  if (placeholder) placeholder.hidden = true;
   window.scrollTo({top:0, behavior:'instant'});
 }
 document.querySelectorAll('.menu-item[data-menu]').forEach(el=>{
